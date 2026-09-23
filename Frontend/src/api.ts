@@ -31,10 +31,16 @@ export interface Recipe {
   fat: number;
   created_at: string;
   ingredients?: RecipeIngredient[];
+  instructions?: string[];
 }
 
 export const getRecipes = async (): Promise<Recipe[]> => {
   const response = await api.get<Recipe[]>('recipes/');
+  return response.data;
+};
+
+export const fetchRecipeById = async (id: string): Promise<Recipe> => {
+  const response = await api.get<Recipe>(`recipes/${id}/`);
   return response.data;
 };
 
