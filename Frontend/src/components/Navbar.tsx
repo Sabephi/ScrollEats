@@ -1,4 +1,6 @@
 import React from 'react';
+import { NavLink, Link } from 'react-router-dom';
+import { Search, Plus, User } from 'lucide-react';
 import logoImg from '../assets/logo.svg';
 import logotypImg from '../assets/logotyp.svg';
 
@@ -7,24 +9,36 @@ export const Navbar: React.FC = () => {
     <header className="navbar-container">
       <div className="navbar">
         <div className="navbar-left">
-          <div className="logo">
+          <Link to="/" className="logo">
             <img src={logotypImg} alt="ScrollEats Logo" className="logotyp-img" />
-            <img src={logoImg} alt="ScrollEats Logo" className="logo-img" />
-          </div>
+            <img src={logoImg} alt="ScrollEats Icon" className="logo-img" />
+          </Link>
+
           <nav className="nav-links">
-            <a href="#" className="active">Discover</a>
-            <a href="#">Collections</a>
-            <a href="#">Meal Plan</a>
+            <NavLink to="/" className="nav-item" end>
+              Discover
+            </NavLink>
+            <NavLink to="/collections" className="nav-item">
+              Collections
+            </NavLink>
+            <NavLink to="/meal-plan" className="nav-item">
+              Meal Plan
+            </NavLink>
           </nav>
         </div>
 
         <div className="search-bar">
+          <Search size={18} className="search-icon" />
           <input type="text" placeholder="Search recipes, ingredients..." />
         </div>
 
         <div className="navbar-right">
-          <button className="add-btn">+</button>
-          <div className="avatar">👤</div>
+          <button className="add-btn">
+            <Plus size={20} />
+          </button>
+          <div className="avatar">
+            <User size={18} />
+          </div>
         </div>
       </div>
     </header>

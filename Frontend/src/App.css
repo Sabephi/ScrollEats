@@ -243,19 +243,33 @@ body {
   gap: 1.5rem; 
   font-size: 0.9rem; 
   font-weight: 600;
-  color: #9ca3af;
+  align-items: center;
 }
 
 .nav-links a:hover{color: #ffffff;}
-
-.nav-links a { color: #8a9994; text-decoration: none;  transition: color 0.2s ease-in-out;}
-.nav-links a.active { 
+a.active {
+  color: #ffffff;
+}
+.nav-links a {    
+  position: relative;
+  color: #8a9994; 
+  text-decoration: none;  
+  padding-bottom: 0.25rem;
+  transition: color 0.2s ease-in-out;
+}
+.nav-links{ 
   color: rgb(17 183 17);
   font-weight: 600; }
 
-.nav-links a.active:hover {
-  color: rgb(19 236 19 / var(--tw-text-opacity, 1));
-  transition: color 0.2s ease-in-out;
+.nav-item.active::after{
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 2px;
+  background-color: #00ff41;
+  border-radius: 0px;
   }
 
 .search-bar{
@@ -268,7 +282,8 @@ body {
 }
 @media (min-width: 1024px) {
   .search-bar {
-    display: block;
+    display: flex;
+    align-items: center;
   }
 }
 
@@ -286,8 +301,8 @@ body {
 }
 
 .search-bar input:focus {
-  border-color: rgb(19 236 19 / var(--tw-text-opacity, 1));;                 /* focus:border-primary */
-  box-shadow: 0 0 0 1px rgb(19 236 19 / var(--tw-text-opacity, 1));;        /* focus:ring-1 focus:ring-primary */
+  border-color: rgb(19 236 19 / var(--tw-text-opacity, 1));; 
+  box-shadow: 0 0 0 1px rgb(19 236 19 / var(--tw-text-opacity, 1));;
 }
 
 .navbar-right { display: flex; align-items: center; gap: 1rem; }
@@ -306,6 +321,15 @@ body {
   background: rgb(19 236 19 / var(--tw-text-opacity, 1));;
 }
 
+.search-icon {
+  position: absolute;
+  left: 0.85rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  pointer-events: none;
+}
+
 
 /* MAIN FEED */
 .feed-container {
@@ -320,7 +344,7 @@ body {
 /* RECIPE CARD */
 .recipe-card {
   background-color: rgb(24 38 24 / var(--tw-bg-opacity, 1));
-  border-radius: 20px;
+  border-radius: 40px;
   padding: 1.5rem;
   border: solid 2px;
   border-color: rgb(35 58 35 / var(--tw-border-opacity, 1));
