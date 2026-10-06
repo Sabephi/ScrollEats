@@ -44,4 +44,19 @@ export const fetchRecipeById = async (id: string): Promise<Recipe> => {
   return response.data;
 };
 
+export interface PaginatedResponse<T> {
+  count: number;
+  next: string | null;
+  previous: string | null;
+  results: T[];
+}
+
+export const fetchRecipes = async (page: number = 1): Promise<PaginatedResponse<Recipe>> => {
+  const response = await fetch(`http://127.0.0.1:8000/api/recipes/?page=${page}`);
+  if (!response.ok) {
+    throw new Error('Nie udało się pobrać przepisów');
+  }
+  return response.json();
+};
+
 export default api;

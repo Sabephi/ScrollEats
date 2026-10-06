@@ -14,7 +14,7 @@ class Recipe(models.Model):
     description = models.TextField(blank=True)
     prep_time = models.PositiveIntegerField(help_text="Czas przygotowania w minutach")
     difficulty = models.CharField(max_length=20, choices=DIFFICULTY_CHOICES, default='beginner')
-    
+    image_url = models.URLField(max_length=500, blank=True, null=True)
     calories = models.PositiveIntegerField(default=0)
     protein = models.PositiveIntegerField(default=0)
     carbs = models.PositiveIntegerField(default=0)

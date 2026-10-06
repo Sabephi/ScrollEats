@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from rest_framework import viewsets, permissions, filters
+from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
 from .models import Recipe, Ingredient, Comment, Inquiry
 from .serializers import (
@@ -7,8 +8,14 @@ from .serializers import (
     IngredientSerializer, CommentSerializer, InquirySerializer
 )
 
+class RecipePagination(PageNumberPagination):
+    page_size = 10 
+    page_size_query_param = 'page_size'
+    max_page_size = 100
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all().order_by('-created_at')
+    serializer_class = RecipeSerializer
+    pagination_class = RecipePagination
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['difficulty']
     search_fields = ['title', 'description']
