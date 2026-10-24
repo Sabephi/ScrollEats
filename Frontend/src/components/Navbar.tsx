@@ -33,12 +33,13 @@ export const Navbar: React.FC = () => {
         </div>
 
         <div className="navbar-right">
-          <button className="add-btn">
+          <Link to="/add-recipe" className="add-btn" title="Add New Recipe">
             <Plus size={20} />
-          </button>
-          <div className="avatar">
+          </Link>
+          
+          <NavLink to="/profile" className="avatar" title="My Profile">
             <User size={18} />
-          </div>
+          </NavLink>
         </div>
       </div>
     </header>

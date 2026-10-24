@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { type Recipe } from '../api.ts';
+import React from 'react';
+import { type Recipe } from '../api';
 import { Link } from 'react-router-dom';
 
 interface RecipeCardProps {
@@ -7,6 +7,8 @@ interface RecipeCardProps {
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
+  const fallbackImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
+
   return (
     <article className="recipe-card">
       <div className="card-header">
@@ -23,21 +25,21 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
       <div className="card-text">
         <h2 className="card-title">
           <Link to={`/recipes/${recipe.id}`} className="card-link">
-          {recipe.title}
+            {recipe.title}
           </Link>
         </h2>
         <p className="card-desc">{recipe.description}</p>
       </div>
 
-  <Link to={`/recipes/${recipe.id}`} className="card-image-link">
-      <div className="image-container">
-        <img 
-          src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80" 
-          alt={recipe.title} 
-        />
-        <span className="time-badge">⏱ {recipe.prep_time} MIN</span>
-      </div>
-  </Link>
+      <Link to={`/recipes/${recipe.id}`} className="card-image-link">
+        <div className="image-container">
+          <img 
+            src={recipe.image_url || fallbackImage} 
+            alt={recipe.title} 
+          />
+          <span className="time-badge">⏱ {recipe.prep_time} MIN</span>
+        </div>
+      </Link>
 
       <div className="macro-section">
         <span className="macro-label">MACRO-NUTRIENTS / SERVING</span>

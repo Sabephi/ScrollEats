@@ -14,6 +14,7 @@ class RecipeIngredientSerializer(serializers.ModelSerializer):
         fields = ['id', 'ingredient', 'ingredient_name', 'amount', 'unit']
 
 class RecipeSerializer(serializers.ModelSerializer):
+    get_image = serializers.SerializerMethodField()
     ingredients = RecipeIngredientSerializer(source='recipeingredient_set', many=True, read_only=True)
     author_username = serializers.ReadOnlyField(source='author.username')
 
@@ -21,32 +22,59 @@ class RecipeSerializer(serializers.ModelSerializer):
         model = Recipe
         fields = [
             'id', 'title', 'description', 'prep_time', 'difficulty',
-            'calories', 'protein', 'carbs', 'fat', 'author', 'author_username',
-            'created_at', 'ingredients'
+            'calories', 'protein', 'carbs', 'fat', 'image', 'image_url', 
+            'get_image', 'instructions', 'author', 'author_username', 'created_at', 'ingredients'
         ]
         read_only_fields = ['author', 'created_at']
 
-class CreateRecipeIngredientSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = RecipeIngredient
-        fields = ['ingredient', 'amount', 'unit']
+    def get_get_image(self, obj):
+        if obj.image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.image.url)
+            return obj.image.url
+        return obj.image_url
+
+
+class CreateRecipeIngredientSerializer(serializers.Serializer):
+    ingredient_name = serializers.CharField(max_length=255)
+    amount = serializers.FloatField(default=1.0)
+    unit = serializers.CharField(max_length=50, default='szt')
+
 
 class CreateRecipeSerializer(serializers.ModelSerializer):
-    ingredients = CreateRecipeIngredientSerializer(many=True, write_only=True)
+    ingredients = CreateRecipeIngredientSerializer(many=True, write_only=True, required=False)
 
     class Meta:
         model = Recipe
         fields = [
             'id', 'title', 'description', 'prep_time', 'difficulty',
-            'calories', 'protein', 'carbs', 'fat', 'ingredients'
+            'calories', 'protein', 'carbs', 'fat', 'image', 'image_url', 
+            'instructions', 'ingredients'
         ]
 
     def create(self, validated_data):
-        ingredients_data = validated_data.pop('ingredients')
+        ingredients_data = validated_data.pop('ingredients', [])
+
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            validated_data['author'] = request.user
+
         recipe = Recipe.objects.create(**validated_data)
+
         for ing_data in ingredients_data:
-            RecipeIngredient.objects.create(recipe=recipe, **ing_data)
+            ing_name = ing_data['ingredient_name'].strip().capitalize()
+            if ing_name:
+                ingredient_obj, _ = Ingredient.objects.get_or_create(name=ing_name)
+                RecipeIngredient.objects.create(
+                    recipe=recipe,
+                    ingredient=ingredient_obj,
+                    amount=ing_data.get('amount', 1.0),
+                    unit=ing_data.get('unit', 'szt')
+                )
+
         return recipe
+
 
 class CommentSerializer(serializers.ModelSerializer):
     author_username = serializers.ReadOnlyField(source='author.username')
@@ -55,6 +83,7 @@ class CommentSerializer(serializers.ModelSerializer):
         model = Comment
         fields = ['id', 'recipe', 'author', 'author_username', 'content', 'rating', 'created_at']
         read_only_fields = ['author', 'created_at']
+
 
 class InquirySerializer(serializers.ModelSerializer):
     reporter_username = serializers.ReadOnlyField(source='reporter.username')

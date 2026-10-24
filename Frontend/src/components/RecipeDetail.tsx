@@ -26,17 +26,50 @@ export const RecipeDetail: React.FC = () => {
   }, [id]);
 
   const formatAmount = (amount: number, unit: string) => {
-    if (unitSystem === 'metric') return `${amount} ${unit}`;
+  const u = (unit || '').toLowerCase().trim();
 
-    const u = (unit || '').toLowerCase().trim();
-    if (u === 'g' || u === 'gram' || u === 'gramy') {
-      return `${(amount * 0.035274).toFixed(1)} oz`;
+  if (unitSystem === 'metric') {
+    if (u === 'lb' || u === 'lbs' || u === 'pound' || u === 'pounds') {
+      const grams = amount * 453.592;
+      return grams >= 1000 
+        ? `${(grams / 1000).toFixed(1)} kg` 
+        : `${Math.round(grams)} g`;
     }
-    if (u === 'ml' || u === 'mililitrów') {
-      return `${(amount * 0.033814).toFixed(1)} fl oz`;
+    if (u === 'oz' || u === 'ounce' || u === 'ounces') {
+      const grams = amount * 28.3495;
+      return `${Math.round(grams)} g`;
     }
+
+
+    if (u === 'c') {
+      return `${amount} cup`;
+    }
+    if (u === 't' || u === 'tsp') {
+      return `${amount} teaspoon(s)`;
+    }
+    if (u === 't' || u === 'tbsp' || u === 'tablespoon' || u === 'Tbs') {
+      return `${amount} tablespoon(s)`;
+    }
+    if (u === 'szt') {
+      return `${amount} pcs`;
+    }
+   
+
     return `${amount} ${unit}`;
-  };
+  }
+
+  if (u === 'g' || u === 'gram' || u === 'gramy') {
+    return `${(amount * 0.035274).toFixed(1)} oz`;
+  }
+  if (u === 'ml' || u === 'mililitrów') {
+    return `${(amount * 0.033814).toFixed(1)} fl oz`;
+  }
+  if (u === 'szt') {
+      return `${amount} pcs`;
+    }
+
+  return `${amount} ${unit}`;
+};
 
   if (loading) return <div className="status-msg">Ładowanie przepisu...</div>;
   if (error || !recipe) return <div className="status-msg error">{error || 'Nie znaleziono przepisu.'}</div>;
@@ -46,6 +79,13 @@ export const RecipeDetail: React.FC = () => {
   const proteinPct = Math.round(((recipe.protein || 0) / totalGrams) * 100);
   const carbsPct = Math.round(((recipe.carbs || 0) / totalGrams) * 100);
   const fatPct = Math.round(((recipe.fat || 0) / totalGrams) * 100);
+
+  const fallbackImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1000&q=80';
+
+  const getHighResImage = (url?: string) => {
+  if (!url) return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1000&q=80';
+  return url.replace('312x231', '636x393').replace('556x370', '636x393');
+};
 
   return (
     <div className="recipe-page">
@@ -92,7 +132,7 @@ export const RecipeDetail: React.FC = () => {
           <div className="hero-right">
             <div className="main-image-wrapper">
               <img 
-                src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1000&q=80" 
+                src={getHighResImage(recipe.image_url)} 
                 alt={recipe.title} 
               />
             </div>
@@ -173,39 +213,36 @@ export const RecipeDetail: React.FC = () => {
           <section className="steps-column">
             <div className="steps-header">
               <h2>Cooking Steps</h2>
-              <span className="estimated-time">ESTIMATED 25 MINS ACTIVE</span>
+              <span className="estimated-time">ESTIMATED {recipe.prep_time} MINS ACTIVE</span>
             </div>
 
             <div className="steps-list">
-              <div className="step-card">
-                <div className="step-num-badge">01</div>
-                <div className="step-content">
-                  <h3>Prep the Aromatics</h3>
-                  <p>Finely chop the garlic and bird's eye chillies. Slice the chicken into bite-sized pieces. Pluck the holy basil leaves from the stems, discarding the tough woody parts.</p>
-                  <div className="step-image">
-                    <img src="https://images.unsplash.com/photo-1615485290382-441e4d049cb5?auto=format&fit=crop&w=600&q=80" alt="Prep" />
-                  </div>
-                </div>
-              </div>
+              {recipe.instructions && recipe.instructions.length > 0 ? (
+                recipe.instructions.map((step, index) => {
+                  const isObject = typeof step === 'object' && step !== null;
+                  const stepText = isObject ? step.text : step;
+                  const stepImage = isObject ? step.image : null;
 
-              <div className="step-card">
-                <div className="step-num-badge">02</div>
-                <div className="step-content">
-                  <h3>Sizzle the Base</h3>
-                  <p>Heat high-smoke palm oil in a wok over intense heat. Add the aromatics. Stir-fry for 20-30 seconds until the aroma fills the room but before the garlic browns.</p>
-                </div>
-              </div>
-
-              <div className="step-card">
-                <div className="step-num-badge">03</div>
-                <div className="step-content">
-                  <h3>Caramelize the Protein</h3>
-                  <p>Add chicken. Spread it out to max-time contact. Let it sear for 1 minute before tossing. Continue until edges are crisp and center is cooked through.</p>
-                  <div className="step-image">
-                    <img src="https://images.unsplash.com/photo-1512058564366-18510be2db19?auto=format&fit=crop&w=600&q=80" alt="Cooking" />
-                  </div>
-                </div>
-              </div>
+                  return (
+                    <div key={index} className="step-card">
+                      <div className="step-num-badge">
+                        {String(index + 1).padStart(2, '0')}
+                      </div>
+                      <div className="step-content">
+                        <h3>Step {index + 1}</h3>
+                        <p>{stepText}</p>
+                        {stepImage && (
+                          <div className="step-image-container">
+                            <img src={stepImage} alt={`Step ${index + 1}`} className="step-image" />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <p className="no-steps-msg">Brak szczegółowych kroków dla tego przepisu.</p>
+              )}
             </div>
           </section>
 

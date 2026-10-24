@@ -4,7 +4,10 @@ import { fetchRecipes, type Recipe } from './api';
 import { Navbar } from './components/Navbar';
 import { RecipeCard } from './components/RecipeCard';
 import { RecipeDetail } from './components/RecipeDetail';
+import AddRecipe from './components/AddRecipe';
+import UserProfile from './components/UserProfile';
 import './App.css';
+
 
 function HomeFeed() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
@@ -91,6 +94,8 @@ export function App() {
       <Routes>
         <Route path="/" element={<HomeFeed />} />
         <Route path="/recipes/:id" element={<RecipeDetail />} />
+        <Route path="/add-recipe" element={<AddRecipe />} />
+        <Route path="/profile" element={<UserProfile />} />
       </Routes>
     </BrowserRouter>
   );

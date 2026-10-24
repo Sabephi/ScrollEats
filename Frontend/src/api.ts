@@ -13,14 +13,20 @@ export interface Ingredient {
 }
 
 export interface RecipeIngredient {
-  id: number;
-  ingredient: Ingredient;
+  id?: number;
+  ingredient?: number | Ingredient;
+  ingredient_name?: string;
   amount: number;
   unit: string;
 }
 
+export interface StepItem {
+  text: string;
+  image?: string | null;
+}
+
 export interface Recipe {
-  id: number;
+  id?: number;
   title: string;
   description: string;
   prep_time: number;
@@ -29,20 +35,11 @@ export interface Recipe {
   protein: number;
   carbs: number;
   fat: number;
-  created_at: string;
+  image_url?: string;
+  created_at?: string;
   ingredients?: RecipeIngredient[];
-  instructions?: string[];
+  instructions?: (string | StepItem)[];
 }
-
-export const getRecipes = async (): Promise<Recipe[]> => {
-  const response = await api.get<Recipe[]>('recipes/');
-  return response.data;
-};
-
-export const fetchRecipeById = async (id: string): Promise<Recipe> => {
-  const response = await api.get<Recipe>(`recipes/${id}/`);
-  return response.data;
-};
 
 export interface PaginatedResponse<T> {
   count: number;
@@ -57,6 +54,16 @@ export const fetchRecipes = async (page: number = 1): Promise<PaginatedResponse<
     throw new Error('Nie udało się pobrać przepisów');
   }
   return response.json();
+};
+
+export const fetchRecipeById = async (id: string | number): Promise<Recipe> => {
+  const response = await api.get<Recipe>(`recipes/${id}/`);
+  return response.data;
+};
+
+export const createRecipe = async (recipeData: Partial<Recipe>): Promise<Recipe> => {
+  const response = await api.post<Recipe>('recipes/', recipeData);
+  return response.data;
 };
 
 export default api;

@@ -1,5 +1,6 @@
 from django.contrib import admin
-from .models import Recipe, Ingredient, RecipeIngredient, Comment, MealPlan, Inquiry
+from django.utils.html import format_html
+from .models import Recipe, Ingredient, RecipeIngredient, Comment, MealPlan, Inquiry  # <-- TUTAJ DODANO MealPlan
 
 @admin.register(Ingredient)
 class IngredientAdmin(admin.ModelAdmin):
@@ -12,10 +13,16 @@ class RecipeIngredientInline(admin.TabularInline):
 
 @admin.register(Recipe)
 class RecipeAdmin(admin.ModelAdmin):
-    list_display = ('id', 'title', 'difficulty', 'prep_time', 'calories', 'author', 'created_at')
-    list_filter = ('difficulty', 'created_at')
+    list_display = ('id', 'title', 'difficulty', 'prep_time', 'calories', 'author', 'image_preview', 'created_at')
     search_fields = ('title', 'description')
     inlines = [RecipeIngredientInline]
+
+    def image_preview(self, obj):
+        if obj.image_url:
+            return format_html('<img src="{}" style="width: 50px; height: 50px; object-fit: cover; border-radius: 6px;" />', obj.image_url)
+        return "Brak zdjęcia"
+    
+    image_preview.short_description = 'Zdjęcie'
 
 @admin.register(Comment)
 class CommentAdmin(admin.ModelAdmin):

@@ -307,18 +307,25 @@ a.active {
 
 .navbar-right { display: flex; align-items: center; gap: 1rem; }
 .add-btn {
-  background: rgb(17 183 17);
-  border: none;
-  width: 32px;
-  height: 32px;
+display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
-  color: #000;
-  font-weight: bold;
+  background-color: rgb(19 236 19);
+  color: #000000;
+  text-decoration: none;
+  border: none;
   cursor: pointer;
+  padding: 0;
+  box-sizing: border-box;
+  transition: color 0.2s ease;
 }
 
 .add-btn:hover{
   background: rgb(19 236 19 / var(--tw-text-opacity, 1));;
+  color: #fff;
 }
 
 .search-icon {
@@ -331,7 +338,6 @@ a.active {
 }
 
 
-/* MAIN FEED */
 .feed-container {
   max-width: 750px;
   margin: 2rem auto;
@@ -341,7 +347,6 @@ a.active {
   padding: 0 1rem;
 }
 
-/* RECIPE CARD */
 .recipe-card {
   background-color: rgb(24 38 24 / var(--tw-bg-opacity, 1));
   border-radius: 40px;
@@ -420,13 +425,16 @@ a.active {
 .image-container { 
   position: relative; 
   width: 100%; 
+  aspect-ratio: 16 / 9;
   height: 260px; 
   border-radius: 14px; 
   overflow: hidden;
+  background-color: #1a221a;
  }
 
 .recipe-card:hover .image-container img {
   transform: scale(1.1);
+  filter: contrast(105%) brightness(105%);
 }
 
 .image-container img { 
@@ -435,7 +443,9 @@ a.active {
   object-fit: cover; 
   transition-property: transform;
   transition-duration: 700ms;
+  filter: contrast(103%) brightness(102%);
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  image-rendering: -webkit-optimize-contrast;
 }
 .time-badge {
   position: absolute;

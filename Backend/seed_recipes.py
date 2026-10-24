@@ -18,7 +18,6 @@ def fetch_and_seed_recipes(total_count=100):
         defaults={'email': 'chef@scrolleats.com'}
     )
 
-
     print(f"Rozpoczynam pobieranie {total_count} przepisów ze Spoonacular API...")
     
     url = "https://api.spoonacular.com/recipes/complexSearch"
@@ -28,6 +27,7 @@ def fetch_and_seed_recipes(total_count=100):
         'addRecipeInformation': True,
         'addRecipeNutrition': True,
         'fillIngredients': True,
+        'instructionsRequired': True,
     }
 
     try:
@@ -57,8 +57,31 @@ def fetch_and_seed_recipes(total_count=100):
             fat = int(nutrients.get('Fat', 12))
 
             prep_time = item.get('readyInMinutes', 30)
-            image_url = item.get('image', 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80')
+            
+            raw_image = item.get('image', '')
+            if raw_image:
+                image_url = raw_image.replace('312x231', '636x393').replace('556x370', '636x393')
+            else:
+                image_url = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1000&q=80'
 
+
+            analyzed_instructions = item.get('analyzedInstructions', [])
+            steps_list = []
+
+            if analyzed_instructions and len(analyzed_instructions) > 0:
+                raw_steps = analyzed_instructions[0].get('steps', [])
+                for step in raw_steps:
+                    step_text = step.get('step', '').replace('&amp;', '&')
+                    if step_text:
+                        steps_list.append({
+                            'text': step_text,
+                            'image': None
+                        })
+
+            if not steps_list and item.get('instructions'):
+                clean_text = re.sub('<[^<]+?>', '', item.get('instructions', '')).replace('&amp;', '&')
+                steps_list = [{'text': s.strip(), 'image': None} for sstr in clean_text.split('.') if (s := sstr.strip())]
+            
             recipe = Recipe.objects.create(
                 author=default_author,
                 title=title,
@@ -69,7 +92,8 @@ def fetch_and_seed_recipes(total_count=100):
                 carbs=carbs,
                 fat=fat,
                 difficulty='medium',
-                image_url=image_url
+                image_url=image_url,
+                instructions=steps_list
             )
 
             extended_ingredients = item.get('extendedIngredients', [])
