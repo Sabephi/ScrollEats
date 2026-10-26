@@ -6,6 +6,7 @@ import { RecipeCard } from './components/RecipeCard';
 import { RecipeDetail } from './components/RecipeDetail';
 import AddRecipe from './components/AddRecipe';
 import UserProfile from './components/UserProfile';
+import Auth from './components/Auth';
 import './App.css';
 
 
@@ -96,6 +97,7 @@ export function App() {
         <Route path="/recipes/:id" element={<RecipeDetail />} />
         <Route path="/add-recipe" element={<AddRecipe />} />
         <Route path="/profile" element={<UserProfile />} />
+        <Route path="/auth" element={<Auth />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,10 +1,25 @@
-import React from 'react';
-import { NavLink, Link } from 'react-router-dom';
-import { Search, Plus, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
+import { Search, Plus, LogIn, LogOut } from 'lucide-react';
 import logoImg from '../assets/logo.svg';
 import logotypImg from '../assets/logotyp.svg';
 
 export const Navbar: React.FC = () => {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setIsAuthenticated(Boolean(localStorage.getItem('access_token')));
+  }, [location]);
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    setIsAuthenticated(false);
+    navigate('/');
+  };
+
   return (
     <header className="navbar-container">
       <div className="navbar">
@@ -36,12 +51,31 @@ export const Navbar: React.FC = () => {
           <Link to="/add-recipe" className="add-btn" title="Add New Recipe">
             <Plus size={20} />
           </Link>
-          
-          <NavLink to="/profile" className="avatar" title="My Profile">
-            <User size={18} />
-          </NavLink>
+
+          {isAuthenticated ? (
+            <div className="navbar-user-section">
+              <Link to="/profile" className="avatar-link" title="My Profile">
+                <img 
+                  src="https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=150&q=80" 
+                  alt="Avatar" 
+                  className="user-avatar-circle" 
+                />
+              </Link>
+              <button onClick={handleLogout} className="btn-login-nav logout-btn" title="Log Out">
+                <LogOut size={16} />
+                <span>Log Out</span>
+              </button>
+            </div>
+          ) : (
+            <Link to="/auth" className="btn-login-nav" title="Sign In">
+              <LogIn size={16} />
+              <span>Log In</span>
+            </Link>
+          )}
         </div>
       </div>
     </header>
   );
 };
+
+export default Navbar;

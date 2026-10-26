@@ -305,6 +305,66 @@ a.active {
   box-shadow: 0 0 0 1px rgb(19 236 19 / var(--tw-text-opacity, 1));;
 }
 
+.btn-login-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(19, 236, 19, 0.12);
+  border: 1px solid rgba(19, 236, 19, 0.3);
+  color: rgb(19, 236, 19);
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-login-nav:hover {
+  background-color: rgb(19, 236, 19);
+  color: #000000;
+  border-color: rgb(19, 236, 19);
+  box-shadow: 0 0 12px rgba(19, 236, 19, 0.3);
+}
+
+
+.navbar-user-section {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.user-avatar-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.user-avatar-circle:hover {
+  border-color: rgb(19, 236, 19);
+  transform: scale(1.05);
+}
+
+.logout-btn {
+  background-color: transparent;
+  border: 1px solid rgb(19, 236, 19);
+  color: rgb(19, 236, 19);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.logout-btn:hover {
+  background-color: rgb(19, 236, 19);
+  color: #000;
+}
+
+
+
 .navbar-right { display: flex; align-items: center; gap: 1rem; }
 .add-btn {
 display: inline-flex;
@@ -322,6 +382,9 @@ display: inline-flex;
   box-sizing: border-box;
   transition: color 0.2s ease;
 }
+
+
+
 
 .add-btn:hover{
   background: rgb(19 236 19 / var(--tw-text-opacity, 1));;
