@@ -1,6 +1,6 @@
 from django.db import models
 from django.conf import settings
-
+from django.contrib.auth import get_user_model
 class Recipe(models.Model):
     DIFFICULTY_CHOICES = (
         ('beginner', 'Beginner'),
@@ -21,6 +21,12 @@ class Recipe(models.Model):
     protein = models.PositiveIntegerField(default=0)
     carbs = models.PositiveIntegerField(default=0)
     fat = models.PositiveIntegerField(default=0)
+
+    favorites = models.ManyToManyField(
+        settings.AUTH_USER_MODEL, 
+        related_name='favorite_recipes', 
+        blank=True
+    )
     
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -69,3 +75,13 @@ class Inquiry(models.Model):
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='NEW')
     resolution_notes = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+class Collection(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='collections')
+    name = models.CharField(max_length=100)
+    recipes = models.ManyToManyField(Recipe, related_name='in_collections', blank=True)
+    is_public = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"{self.name} - {self.user.username}"

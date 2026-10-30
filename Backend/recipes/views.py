@@ -1,6 +1,8 @@
 from django.shortcuts import render
 from rest_framework import viewsets, permissions, filters
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
 from .models import Recipe, Ingredient, Comment, Inquiry
@@ -9,12 +11,10 @@ from .serializers import (
     IngredientSerializer, CommentSerializer, InquirySerializer
 )
 
-
 class RecipePagination(PageNumberPagination):
     page_size = 10 
     page_size_query_param = 'page_size'
     max_page_size = 100
-
 
 class RecipeViewSet(viewsets.ModelViewSet):
     queryset = Recipe.objects.all().order_by('-created_at')
@@ -31,6 +31,27 @@ class RecipeViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         serializer.save(author=self.request.user)
+
+    @action(detail=True, methods=['post'], permission_classes=[permissions.IsAuthenticated])
+    def toggle_favorite(self, request, pk=None):
+        recipe = self.get_object()
+        user = request.user
+        if user in recipe.favorites.all():
+            recipe.favorites.remove(user)
+            return Response({'status': 'unfavorited'})
+        else:
+            recipe.favorites.add(user)
+            return Response({'status': 'favorited'})
+
+    @action(detail=False, methods=['get'], permission_classes=[permissions.IsAuthenticated])
+    def my_favorites(self, request):
+        recipes = self.queryset.filter(favorites=request.user)
+        page = self.paginate_queryset(recipes)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+        serializer = self.get_serializer(recipes, many=True)
+        return Response(serializer.data)
 
 
 class IngredientViewSet(viewsets.ReadOnlyModelViewSet):

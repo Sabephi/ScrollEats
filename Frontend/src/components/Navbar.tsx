@@ -6,19 +6,53 @@ import logotypImg from '../assets/logotyp.svg';
 
 export const Navbar: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const location = useLocation();
   const navigate = useNavigate();
 
   useEffect(() => {
-    setIsAuthenticated(Boolean(localStorage.getItem('access_token')));
+    const token = localStorage.getItem('access_token');
+    const isAuth = Boolean(token);
+    setIsAuthenticated(isAuth);
+
+    if (isAuth) {
+      // Pobieramy prawdziwy awatar zalogowanego użytkownika z backendu
+      fetch('/api/users/profile/', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((res) => {
+          if (res.ok) return res.json();
+          throw new Error('Nie udało się pobrać profilu');
+        })
+        .then((data) => {
+          if (data && data.avatar) {
+            setUserAvatar(data.avatar);
+          } else {
+            setUserAvatar(null);
+          }
+        })
+        .catch((err) => {
+          console.error('Błąd pobierania awatara do paska nawigacji:', err);
+        });
+    } else {
+      setUserAvatar(null);
+    }
   }, [location]);
 
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
     setIsAuthenticated(false);
+    setUserAvatar(null);
     navigate('/');
   };
+
+  const defaultAvatar = 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=150&q=80';
+  const avatarUrl = userAvatar ? userAvatar : defaultAvatar;
 
   return (
     <header className="navbar-container">
@@ -56,7 +90,7 @@ export const Navbar: React.FC = () => {
             <div className="navbar-user-section">
               <Link to="/profile" className="avatar-link" title="My Profile">
                 <img 
-                  src="https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=150&q=80" 
+                  src={avatarUrl} 
                   alt="Avatar" 
                   className="user-avatar-circle" 
                 />

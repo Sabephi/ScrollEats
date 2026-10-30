@@ -17,13 +17,15 @@ class RecipeSerializer(serializers.ModelSerializer):
     get_image = serializers.SerializerMethodField()
     ingredients = RecipeIngredientSerializer(source='recipeingredient_set', many=True, read_only=True)
     author_username = serializers.ReadOnlyField(source='author.username')
+    is_favorited = serializers.SerializerMethodField()
 
     class Meta:
         model = Recipe
         fields = [
             'id', 'title', 'description', 'prep_time', 'difficulty',
             'calories', 'protein', 'carbs', 'fat', 'image', 'image_url', 
-            'get_image', 'instructions', 'author', 'author_username', 'created_at', 'ingredients'
+            'get_image', 'instructions', 'author', 'author_username', 'created_at', 'ingredients',
+            'favorites', 'is_favorited'
         ]
         read_only_fields = ['author', 'created_at']
 
@@ -34,6 +36,12 @@ class RecipeSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.image.url)
             return obj.image.url
         return obj.image_url
+
+    def get_is_favorited(self, obj):
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            return obj.favorites.filter(id=request.user.id).exists()
+        return False
 
 
 class CreateRecipeIngredientSerializer(serializers.Serializer):

@@ -1,6 +1,7 @@
-import React from 'react';
-import { type Recipe } from '../api';
+import React, { useState } from 'react';
+import { type Recipe, toggleFavorite } from '../api';
 import { Link } from 'react-router-dom';
+import { Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
 
 interface RecipeCardProps {
   recipe: Recipe;
@@ -8,6 +9,27 @@ interface RecipeCardProps {
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
   const fallbackImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
+
+  const initiallyLiked = recipe.is_favorited === true;
+  const initialLikesCount = recipe.favorites ? recipe.favorites.length : 0;
+  
+  const [isLiked, setIsLiked] = useState(initiallyLiked); 
+  const [likesCount, setLikesCount] = useState(initialLikesCount);
+
+  const handleLikeClick = async () => {
+    if (!recipe.id) return;
+
+    setIsLiked(!isLiked);
+    setLikesCount((prev) => (isLiked ? prev - 1 : prev + 1));
+
+    try {
+      await toggleFavorite(recipe.id);
+    } catch (err) {
+      setIsLiked(isLiked);
+      setLikesCount((prev) => (isLiked ? prev + 1 : prev - 1));
+      console.error("Błąd podczas polubienia przepisu:", err);
+    }
+  };
 
   return (
     <article className="recipe-card">
@@ -65,11 +87,23 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
 
       <div className="card-footer">
         <div className="social-actions">
-          <button className="action-btn action-heart">❤️ 2.4k</button>
-          <button className="action-btn action-comment">💬 66</button>
-          <button className="action-btn action-share">↗ Share</button>
+          <button 
+            className="action-btn action-heart" 
+            onClick={handleLikeClick}
+            style={{ color: isLiked ? '#ef4444' : 'inherit' }}
+          >
+            <Heart 
+              size={16} 
+              fill={isLiked ? "#ef4444" : "none"} 
+              color={isLiked ? "#ef4444" : "currentColor"} 
+            /> 
+            {likesCount > 0 ? likesCount : 'Like'}
+          </button>
+          
+          <button className="action-btn action-comment"><MessageCircle size={16} /> 66</button>
+          <button className="action-btn action-share"><Share2 size={16} /> Share</button>
         </div>
-        <button className="save-btn">🔖 Save Recipe</button>
+        <button className="save-btn"><Bookmark size={16} /> Save Recipe</button>
       </div>
     </article>
   );

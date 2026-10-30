@@ -9,7 +9,6 @@ import UserProfile from './components/UserProfile';
 import Auth from './components/Auth';
 import './App.css';
 
-
 function HomeFeed() {
   const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [page, setPage] = useState<number>(1);
@@ -26,10 +25,18 @@ function HomeFeed() {
 
     try {
       const data = await fetchRecipes(page);
-    
-      setRecipes((prev) => [...prev, ...data.results]);
+
+      console.log('Dane z API:', data);
+
+      const newRecipes = Array.isArray(data) ? data : data.results || [];
       
-      setHasMore(data.next !== null);
+      console.log('Wyciągnięte przepisy:', newRecipes);
+
+      setRecipes((prev) => [...prev, ...newRecipes]);
+      
+      const hasNextPage = Array.isArray(data) ? false : !!data.next;
+      setHasMore(hasNextPage);
+      
       setPage((prevPage) => prevPage + 1);
     } catch (err) {
       console.error('Błąd pobierania przepisów:', err);
@@ -67,6 +74,12 @@ function HomeFeed() {
         {recipes.map((recipe) => (
           <RecipeCard key={recipe.id} recipe={recipe} />
         ))}
+
+        {!loading && !error && recipes.length === 0 && (
+          <p style={{ textAlign: 'center', marginTop: '3rem', color: '#9ca3af', width: '100%' }}>
+            Brak przepisów do wyświetlenia. Przejdź do panelu lub użyj przycisku +, aby dodać pierwszy przepis!
+          </p>
+        )}
 
         <div ref={observerTarget} style={{ padding: '2rem 0', textAlign: 'center', width: '100%' }}>
           {loading && (
