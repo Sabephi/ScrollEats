@@ -111,6 +111,8 @@ export function App() {
         <Route path="/add-recipe" element={<AddRecipe />} />
         <Route path="/profile" element={<UserProfile />} />
         <Route path="/auth" element={<Auth />} />
+        <Route path="/profile" element={<UserProfile />} />
+        <Route path="/profile/:username" element={<UserProfile />} />
       </Routes>
     </BrowserRouter>
   );

@@ -1,11 +1,14 @@
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny, IsAuthenticated
-from rest_framework.generics import RetrieveUpdateAPIView
+from rest_framework.permissions import AllowAny, IsAuthenticated, IsAuthenticatedOrReadOnly
+from rest_framework.generics import RetrieveUpdateAPIView, RetrieveAPIView, ListAPIView
 from django.contrib.auth import get_user_model
+from django.shortcuts import get_object_or_404
 
 from .serializers import UserProfileSerializer
+from recipes.models import Recipe
+from recipes.serializers import RecipeSerializer
 
 User = get_user_model()
 
@@ -52,3 +55,26 @@ class UserProfileView(RetrieveUpdateAPIView):
 
     def get_object(self):
         return self.request.user
+
+class PublicUserProfileView(RetrieveAPIView):
+    queryset = User.objects.all()
+    serializer_class = UserProfileSerializer
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    lookup_field = 'username'
+
+class PublicUserFavoritesView(ListAPIView):
+    permission_classes = [IsAuthenticatedOrReadOnly]
+    serializer_class = RecipeSerializer
+
+    def get_queryset(self):
+        username = self.kwargs.get('username')
+        target_user = get_object_or_404(User, username=username)
+
+        if self.request.user != target_user and not target_user.is_favorites_public:
+            return Recipe.objects.none()
+
+        try:
+            recipe_ids = target_user.favorite_recipes.values_list('recipe_id', flat=True)
+            return Recipe.objects.filter(id__in=recipe_ids)
+        except:
+            return target_user.favorite_recipes.all()

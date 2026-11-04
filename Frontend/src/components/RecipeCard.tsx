@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { type Recipe, toggleFavorite } from '../api';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Heart, MessageCircle, Share2, Bookmark } from 'lucide-react';
 
 interface RecipeCardProps {
@@ -8,7 +8,11 @@ interface RecipeCardProps {
 }
 
 export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
+  const navigate = useNavigate();
   const fallbackImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
+
+  const recipeImage = recipe.get_image || recipe.image_url || fallbackImage;
+  const authorName = recipe.author_username || 'Chef Marcus';
 
   const initiallyLiked = recipe.is_favorited === true;
   const initialLikesCount = recipe.favorites ? recipe.favorites.length : 0;
@@ -16,7 +20,8 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
   const [isLiked, setIsLiked] = useState(initiallyLiked); 
   const [likesCount, setLikesCount] = useState(initialLikesCount);
 
-  const handleLikeClick = async () => {
+  const handleLikeClick = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (!recipe.id) return;
 
     setIsLiked(!isLiked);
@@ -31,13 +36,24 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
     }
   };
 
+  const handleAuthorClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (recipe.author_username) {
+      navigate(`/profile/${recipe.author_username}`);
+    }
+  };
+
   return (
     <article className="recipe-card">
       <div className="card-header">
-        <div className="author-info">
+        <div 
+          className="author-info" 
+          onClick={handleAuthorClick}
+          style={{ cursor: 'pointer' }}
+        >
           <div className="author-avatar">👨‍🍳</div>
           <div>
-            <h4 className="author-name">Chef Marcus</h4>
+            <h4 className="author-name">{authorName}</h4>
             <span className="author-tag">MASTERCHEF • 2H AGO</span>
           </div>
         </div>
@@ -56,7 +72,7 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
       <Link to={`/recipes/${recipe.id}`} className="card-image-link">
         <div className="image-container">
           <img 
-            src={recipe.image_url || fallbackImage} 
+            src={recipeImage} 
             alt={recipe.title} 
           />
           <span className="time-badge">⏱ {recipe.prep_time} MIN</span>
@@ -108,3 +124,5 @@ export const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
     </article>
   );
 };
+
+export default RecipeCard;

@@ -1,22 +1,26 @@
 import React, { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
-import { fetchRecipeById, type Recipe } from '../api';
+import { useParams, useNavigate } from 'react-router-dom';
+import { fetchRecipeById, toggleFavorite, type Recipe } from '../api';
 import './RecipeDetail.css';
 import * as Icon from 'lucide-react';
 
 export const RecipeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
   const [recipe, setRecipe] = useState<Recipe | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
 
   const [unitSystem, setUnitSystem] = useState<'metric' | 'us'>('metric');
 
+  const [isLiked, setIsLiked] = useState<boolean>(false);
+
   useEffect(() => {
     if (!id) return;
     fetchRecipeById(id)
       .then((data) => {
         setRecipe(data);
+        setIsLiked(data.is_favorited === true);
         setLoading(false);
       })
       .catch(() => {
@@ -25,51 +29,62 @@ export const RecipeDetail: React.FC = () => {
       });
   }, [id]);
 
+  const handleLikeClick = async () => {
+    if (!recipe?.id) return;
+
+    setIsLiked(!isLiked);
+
+    try {
+      await toggleFavorite(recipe.id);
+    } catch (err) {
+      setIsLiked(isLiked);
+      console.error("Błąd podczas polubienia przepisu:", err);
+    }
+  };
+
   const formatAmount = (amount: number, unit: string) => {
-  const u = (unit || '').toLowerCase().trim();
+    const u = (unit || '').toLowerCase().trim();
 
-  if (unitSystem === 'metric') {
-    if (u === 'lb' || u === 'lbs' || u === 'pound' || u === 'pounds') {
-      const grams = amount * 453.592;
-      return grams >= 1000 
-        ? `${(grams / 1000).toFixed(1)} kg` 
-        : `${Math.round(grams)} g`;
-    }
-    if (u === 'oz' || u === 'ounce' || u === 'ounces') {
-      const grams = amount * 28.3495;
-      return `${Math.round(grams)} g`;
+    if (unitSystem === 'metric') {
+      if (u === 'lb' || u === 'lbs' || u === 'pound' || u === 'pounds') {
+        const grams = amount * 453.592;
+        return grams >= 1000 
+          ? `${(grams / 1000).toFixed(1)} kg` 
+          : `${Math.round(grams)} g`;
+      }
+      if (u === 'oz' || u === 'ounce' || u === 'ounces') {
+        const grams = amount * 28.3495;
+        return `${Math.round(grams)} g`;
+      }
+
+      if (u === 'c') {
+        return `${amount} cup`;
+      }
+      if (u === 't' || u === 'tsp') {
+        return `${amount} teaspoon(s)`;
+      }
+      if (u === 't' || u === 'tbsp' || u === 'tablespoon' || u === 'Tbs') {
+        return `${amount} tablespoon(s)`;
+      }
+      if (u === 'szt') {
+        return `${amount} pcs`;
+      }
+
+      return `${amount} ${unit}`;
     }
 
-
-    if (u === 'c') {
-      return `${amount} cup`;
+    if (u === 'g' || u === 'gram' || u === 'gramy') {
+      return `${(amount * 0.035274).toFixed(1)} oz`;
     }
-    if (u === 't' || u === 'tsp') {
-      return `${amount} teaspoon(s)`;
-    }
-    if (u === 't' || u === 'tbsp' || u === 'tablespoon' || u === 'Tbs') {
-      return `${amount} tablespoon(s)`;
+    if (u === 'ml' || u === 'mililitrów') {
+      return `${(amount * 0.033814).toFixed(1)} fl oz`;
     }
     if (u === 'szt') {
-      return `${amount} pcs`;
+        return `${amount} pcs`;
     }
-   
 
     return `${amount} ${unit}`;
-  }
-
-  if (u === 'g' || u === 'gram' || u === 'gramy') {
-    return `${(amount * 0.035274).toFixed(1)} oz`;
-  }
-  if (u === 'ml' || u === 'mililitrów') {
-    return `${(amount * 0.033814).toFixed(1)} fl oz`;
-  }
-  if (u === 'szt') {
-      return `${amount} pcs`;
-    }
-
-  return `${amount} ${unit}`;
-};
+  };
 
   if (loading) return <div className="status-msg">Ładowanie przepisu...</div>;
   if (error || !recipe) return <div className="status-msg error">{error || 'Nie znaleziono przepisu.'}</div>;
@@ -80,12 +95,7 @@ export const RecipeDetail: React.FC = () => {
   const carbsPct = Math.round(((recipe.carbs || 0) / totalGrams) * 100);
   const fatPct = Math.round(((recipe.fat || 0) / totalGrams) * 100);
 
-  const fallbackImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1000&q=80';
-
-  const getHighResImage = (url?: string) => {
-  if (!url) return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=1000&q=80';
-  return url.replace('312x231', '636x393').replace('556x370', '636x393');
-};
+  const recipeImage = recipe.get_image || recipe.image_url;
 
   return (
     <div className="recipe-page">
@@ -104,9 +114,13 @@ export const RecipeDetail: React.FC = () => {
             <div className="meta-info-row">
               <div className="meta-item">
                 <span className="meta-label">Created By</span>
-                <div className="author-box">
+                <div 
+                  className="author-box" 
+                  onClick={() => recipe.author_username && navigate(`/profile/${recipe.author_username}`)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="avatar">👤</div>
-                  <span className="meta-value">Chef Gordon</span>
+                  <span className="meta-value">{recipe.author_username || 'Chef'}</span>
                 </div>
               </div>
 
@@ -124,17 +138,35 @@ export const RecipeDetail: React.FC = () => {
               <button className="btn-primary-green primary-green">
                 <span className="icon"><Icon.ChefHat size={18} /></span> Start Cooking
               </button>
-              <button className="btn-icon"><Icon.Heart size={18} /></button>
+
+              <button 
+                className="btn-icon" 
+                onClick={handleLikeClick}
+                style={{ color: isLiked ? '#ef4444' : 'inherit' }}
+              >
+                <Icon.Heart 
+                  size={18} 
+                  fill={isLiked ? "#ef4444" : "none"} 
+                  color={isLiked ? "#ef4444" : "currentColor"} 
+                />
+              </button>
+
               <button className="btn-icon"><Icon.Share2 size={18} /></button>
             </div>
           </div>
 
           <div className="hero-right">
             <div className="main-image-wrapper">
-              <img 
-                src={getHighResImage(recipe.image_url)} 
-                alt={recipe.title} 
-              />
+              {recipeImage ? (
+                <img 
+                  src={recipeImage} 
+                  alt={recipe.title} 
+                />
+              ) : (
+                <div style={{ width: '100%', height: '300px', background: '#1c2420', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', color: '#6b7280' }}>
+                  Brak zdjęcia przepisu
+                </div>
+              )}
             </div>
           </div>
         </section>
@@ -220,8 +252,8 @@ export const RecipeDetail: React.FC = () => {
               {recipe.instructions && recipe.instructions.length > 0 ? (
                 recipe.instructions.map((step, index) => {
                   const isObject = typeof step === 'object' && step !== null;
-                  const stepText = isObject ? step.text : step;
-                  const stepImage = isObject ? step.image : null;
+                  const stepText = isObject ? (step as any).text : step;
+                  const stepImage = isObject ? (step as any).image : null;
 
                   return (
                     <div key={index} className="step-card">
@@ -280,7 +312,7 @@ export const RecipeDetail: React.FC = () => {
                 {recipe.ingredients && recipe.ingredients.length > 0 ? (
                   recipe.ingredients.map((item) => {
                     const ingredientName = typeof item.ingredient === 'object' && item.ingredient !== null 
-                      ? item.ingredient.name 
+                      ? (item.ingredient as any).name 
                       : (item as any).ingredient_name || item.ingredient || 'Składnik';
 
                     return (
@@ -297,46 +329,10 @@ export const RecipeDetail: React.FC = () => {
                     );
                   })
                 ) : (
-                  <>
-                    <li className="checklist-item">
-                      <label className="checkbox-container">
-                        <input type="checkbox" defaultChecked />
-                        <span className="custom-circle"></span>
-                        <span className="ing-name">Chicken Breast</span>
-                      </label>
-                      <span className="ing-amount">{formatAmount(300, 'g')}</span>
-                    </li>
-                    <li className="checklist-item">
-                      <label className="checkbox-container">
-                        <input type="checkbox" />
-                        <span className="custom-circle"></span>
-                        <span className="ing-name">Garlic Cloves</span>
-                      </label>
-                      <span className="ing-amount">{formatAmount(5, 'units')}</span>
-                    </li>
-                    <li className="checklist-item">
-                      <label className="checkbox-container">
-                        <input type="checkbox" />
-                        <span className="custom-circle"></span>
-                        <span className="ing-name">Bird's Eye Chillies</span>
-                      </label>
-                      <span className="ing-amount">{formatAmount(4, 'units')}</span>
-                    </li>
-                    <li className="checklist-item">
-                      <label className="checkbox-container">
-                        <input type="checkbox" />
-                        <span className="custom-circle"></span>
-                        <span className="ing-name">Holy Basil Leaves</span>
-                      </label>
-                      <span className="ing-amount">{formatAmount(1, 'cup')}</span>
-                    </li>
-                  </>
+                  <p style={{ color: '#9ca3af', textAlign: 'center', padding: '1rem 0' }}>Brak składników.</p>
                 )}
               </ul>
 
-              <button className="btn-export-list">
-                <Icon.ShoppingBag size={18} /> Export to List
-              </button>
             </div>
 
           </aside>
@@ -373,3 +369,5 @@ export const RecipeDetail: React.FC = () => {
     </div>
   );
 };
+
+export default RecipeDetail;

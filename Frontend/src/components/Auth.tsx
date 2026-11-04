@@ -60,7 +60,6 @@ export const Auth: React.FC = () => {
       }
 
       if (!response.ok) {
-
         let errorMsg = '';
 
         if (typeof data === 'string') {
@@ -84,6 +83,25 @@ export const Auth: React.FC = () => {
       if (isLogin && data.access) {
         localStorage.setItem('access_token', data.access);
         localStorage.setItem('refresh_token', data.refresh);
+
+        try {
+          const profileRes = await fetch('/api/users/profile/', {
+            headers: {
+              'Authorization': `Bearer ${data.access}`
+            }
+          });
+          if (profileRes.ok) {
+            const profileData = await profileRes.json();
+            if (profileData.username) {
+              localStorage.setItem('username', profileData.username);
+              navigate(`/profile/${profileData.username}`);
+              return;
+            }
+          }
+        } catch (pErr) {
+          console.error("Błąd pobierania nazwy użytkownika:", pErr);
+        }
+
         navigate('/profile');
       } else if (!isLogin) {
         setIsLogin(true);

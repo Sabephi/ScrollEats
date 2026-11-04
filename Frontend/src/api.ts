@@ -7,6 +7,18 @@ const api = axios.create({
   },
 });
 
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('user_id');
+      window.location.href = '/auth';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export interface Ingredient {
   id: number;
   name: string;
@@ -35,12 +47,15 @@ export interface Recipe {
   protein: number;
   carbs: number;
   fat: number;
+  image?: string | null;
   image_url?: string;
+  get_image?: string;
   created_at?: string;
   ingredients?: RecipeIngredient[];
   instructions?: (string | StepItem)[];
   favorites?: number[];
   is_favorited?: boolean;
+  author_username?: string;
 }
 
 export interface PaginatedResponse<T> {
@@ -66,10 +81,27 @@ export const fetchRecipeById = async (id: string | number): Promise<Recipe> => {
   return response.data;
 };
 
-export const createRecipe = async (recipeData: Partial<Recipe>): Promise<Recipe> => {
+export const createRecipe = async (recipeData: any, imageFile?: File | null): Promise<Recipe> => {
   const token = localStorage.getItem('access_token');
-  const response = await api.post<Recipe>('recipes/', recipeData, {
-    headers: { Authorization: `Bearer ${token}` }
+  const formData = new FormData();
+
+  Object.keys(recipeData).forEach((key) => {
+    if (key === 'ingredients' || key === 'instructions') {
+      formData.append(key, JSON.stringify(recipeData[key]));
+    } else if (recipeData[key] !== undefined && recipeData[key] !== null) {
+      formData.append(key, recipeData[key]);
+    }
+  });
+
+  if (imageFile) {
+    formData.append('image', imageFile);
+  }
+
+  const response = await api.post<Recipe>('recipes/', formData, {
+    headers: { 
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    }
   });
   return response.data;
 };

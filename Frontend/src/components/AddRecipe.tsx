@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Plus, X, Camera, Image as ImageIcon, Clock } from 'lucide-react';
 import { createRecipe, type RecipeIngredient } from '../api';
@@ -8,6 +8,8 @@ export const AddRecipe: React.FC = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -21,7 +23,6 @@ export const AddRecipe: React.FC = () => {
     protein: 0,
     carbs: 0,
     fat: 0,
-    image_url: '',
   });
 
   const [ingredients, setIngredients] = useState<RecipeIngredient[]>([
@@ -29,11 +30,17 @@ export const AddRecipe: React.FC = () => {
     { ingredient_name: '', amount: 1, unit: 'szt' },
   ]);
 
-  const [instructions, setInstructions] = useState<{ text: string; image: string }[]>([
+
+  const [instructions, setInstructions] = useState<{ text: string; image: string; file?: File; preview?: string }>([
     { text: '', image: '' },
   ]);
 
   const [categories, setCategories] = useState<string[]>([]);
+
+  useEffect(() => {
+    const token = localStorage.getItem('access_token');
+    setIsAuthenticated(!!token);
+  }, []);
 
   const handleFileSelect = (file: File) => {
     if (file && file.type.startsWith('image/')) {
@@ -49,7 +56,7 @@ export const AddRecipe: React.FC = () => {
     }
   };
 
-const handleStepFileSelect = (index: number, file: File) => {
+  const handleStepFileSelect = (index: number, file: File) => {
     if (file && file.type.startsWith('image/')) {
       const updated = [...instructions];
       updated[index].file = file;
@@ -78,7 +85,7 @@ const handleStepFileSelect = (index: number, file: File) => {
     value: any
   ) => {
     const updated = [...ingredients];
-    updated[index] = { ...updated[index], [field]: value };
+    updated[index] = { ...updated[index], [field]: value } as RecipeIngredient;
     setIngredients(updated);
   };
 
@@ -112,6 +119,8 @@ const handleStepFileSelect = (index: number, file: File) => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isAuthenticated) return;
+
     setLoading(true);
     setError(null);
 
@@ -119,12 +128,17 @@ const handleStepFileSelect = (index: number, file: File) => {
       .filter((step) => step.text.trim() !== '')
       .map((step) => ({
         text: step.text.trim(),
-        image: step.image.trim() || null,
+        image: step.preview || step.image.trim() || null,
       }));
 
-    const formattedIngredients = ingredients.filter(
-      (ing) => (ing.ingredient_name || '').trim() !== ''
-    );
+    const formattedIngredients = ingredients
+      .filter((ing) => (ing.ingredient_name || '').trim() !== '')
+      .map((ing) => ({
+        name: ing.ingredient_name,
+        ingredient_name: ing.ingredient_name,
+        amount: ing.amount,
+        unit: ing.unit,
+      }));
 
     const payload = {
       ...formData,
@@ -281,7 +295,7 @@ const handleStepFileSelect = (index: number, file: File) => {
                   onDragOver={(e) => e.preventDefault()}
                   onDrop={(e) => handleStepDrop(idx, e)}
                   onClick={() => document.getElementById(`step-file-input-${idx}`)?.click()}
-                  style={{ cursor: 'pointer', position: 'relative' }}
+                  style={{ cursor: 'pointer', position: 'relative', marginTop: '10px' }}
                 >
                   <input
                     id={`step-file-input-${idx}`}
@@ -300,18 +314,17 @@ const handleStepFileSelect = (index: number, file: File) => {
                       />
                     </div>
                   ) : (
-                    <>
-                      <div className="step-photo-placeholder">
-                        <ImageIcon size={20} />
-                      </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1c211f', padding: '8px 12px', borderRadius: '8px', border: '1px solid #37413b' }}>
+                      <ImageIcon size={18} color="#8e9b94" />
                       <input
                         type="url"
-                        placeholder="Drag & drop photo or click to browse"
+                        placeholder="Image URL or click/drag to upload step photo"
                         value={step.image}
                         onClick={(e) => e.stopPropagation()}
                         onChange={(e) => handleInstructionChange(idx, 'image', e.target.value)}
+                        style={{ background: 'transparent', border: 'none', color: '#fff', width: '100%', outline: 'none' }}
                       />
-                    </>
+                    </div>
                   )}
                 </div>
               </div>
@@ -388,27 +401,32 @@ const handleStepFileSelect = (index: number, file: File) => {
 
             <div className="ingredients-inputs-list">
               {ingredients.map((ing, idx) => (
-                <div key={idx} className="ingredient-input-row">
+                <div key={idx} className="ingredient-input-row" style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
                   <input
                     type="text"
                     className="ing-name"
                     placeholder="e.g. Fresh Cilantro"
                     value={ing.ingredient_name}
-                    onChange={(e) =>
-                      handleIngredientChange(idx, 'ingredient_name', e.target.value)
-                    }
+                    onChange={(e) => handleIngredientChange(idx, 'ingredient_name', e.target.value)}
+                    style={{ flex: 1 }}
+                  />
+                  <input
+                    type="number"
+                    className="ing-amount"
+                    placeholder="Qty"
+                    value={ing.amount}
+                    min={0}
+                    step="0.1"
+                    onChange={(e) => handleIngredientChange(idx, 'amount', parseFloat(e.target.value) || 0)}
+                    style={{ width: '70px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #37413b', background: '#1c211f', color: '#fff' }}
                   />
                   <input
                     type="text"
-                    className="ing-amount"
-                    placeholder="e.g. 1/2 cup"
-                    value={`${ing.amount} ${ing.unit}`.trim()}
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      handleIngredientChange(idx, 'ingredient_name', ing.ingredient_name);
-                      handleIngredientChange(idx, 'amount', parseFloat(val) || 1);
-                      handleIngredientChange(idx, 'unit', val.replace(/[0-9.]/g, '').trim() || 'szt');
-                    }}
+                    className="ing-unit"
+                    placeholder="Unit"
+                    value={ing.unit}
+                    onChange={(e) => handleIngredientChange(idx, 'unit', e.target.value)}
+                    style={{ width: '90px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #37413b', background: '#1c211f', color: '#fff' }}
                   />
                   <button
                     type="button"
@@ -440,22 +458,34 @@ const handleStepFileSelect = (index: number, file: File) => {
             </div>
 
             <div className="cat-section">
-                <label className="cat-section-title">ALLERGENS</label>
-                <div className="allergens-grid">
-                    {['Gluten-free', 'Dairy-free', 'Nut-free', 'Soy-free'].map((allergen) => (
-                    <label key={allergen} className="custom-checkbox-label">
-                        <input type="checkbox" className="custom-checkbox-input" />
-                        <span className="custom-checkbox-circle"></span>
-                        <span className="checkbox-text">{allergen}</span>
-                    </label>
-                    ))}
-                </div>
+              <label className="cat-section-title">ALLERGENS</label>
+              <div className="allergens-grid">
+                {['Gluten-free', 'Dairy-free', 'Nut-free', 'Soy-free'].map((allergen) => (
+                  <label key={allergen} className="custom-checkbox-label">
+                    <input type="checkbox" className="custom-checkbox-input" />
+                    <span className="custom-checkbox-circle"></span>
+                    <span className="checkbox-text">{allergen}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
 
-          <button type="submit" className="btn-publish" disabled={loading}>
+          {!isAuthenticated && (
+            <div style={{ color: '#ef4444', marginBottom: '10px', fontSize: '14px', textAlign: 'center' }}>
+              Zaloguj się, aby móc opublikować przepis.
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="btn-publish"
+            disabled={loading || !isAuthenticated}
+            style={{ opacity: isAuthenticated ? 1 : 0.5, cursor: isAuthenticated ? 'pointer' : 'not-allowed' }}
+          >
             {loading ? 'PUBLISHING...' : 'PUBLISH RECIPE'}
           </button>
+
           <button type="button" className="btn-draft" onClick={() => navigate('/')}>
             Save as Draft
           </button>

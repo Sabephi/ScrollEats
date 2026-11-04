@@ -13,5 +13,10 @@ class User(AbstractUser):
     bio = models.TextField(max_length=500, blank=True)
     country = models.CharField(max_length=100, blank=True)
     city = models.CharField(max_length=100, blank=True)
+    is_favorites_public = models.BooleanField(default=True)
+    is_collections_public = models.BooleanField(default=True)
+    is_history_public = models.BooleanField(default=True)
+    is_my_recipes_public = models.BooleanField(default=True)
+
     def __str__(self):
         return f"{self.username} ({self.role})"

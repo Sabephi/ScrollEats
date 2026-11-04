@@ -17,7 +17,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'username', 'email', 'role', 'first_name', 'last_name', 
             'bio', 'country', 'city', 'avatar', 
-            'recipes_count', 'saved_count'
+            'recipes_count', 'saved_count',
+            'is_favorites_public', 'is_collections_public', 
+            'is_history_public', 'is_my_recipes_public'
         ]
         read_only_fields = ['email', 'recipes_count', 'saved_count', 'role']
 
