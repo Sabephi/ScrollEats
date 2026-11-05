@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { fetchRecipeById, toggleFavorite, type Recipe } from '../api';
+import { CookingModeModal } from './CookingModeModal';
 import './RecipeDetail.css';
 import * as Icon from 'lucide-react';
 
@@ -12,33 +13,132 @@ export const RecipeDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
 
   const [unitSystem, setUnitSystem] = useState<'metric' | 'us'>('metric');
-
   const [isLiked, setIsLiked] = useState<boolean>(false);
+  
+  const [isCookingModeOpen, setIsCookingModeOpen] = useState(false);
+  const [shareTooltip, setShareTooltip] = useState(false);
+
+  // Stany do systemu ocen
+  const [averageRating, setAverageRating] = useState(0);
+  const [ratingCount, setRatingCount] = useState(0);
+  const [userRating, setUserRating] = useState<number | null>(null);
+  const [hoveredStar, setHoveredStar] = useState<number | null>(null);
+
+  // Sprawdzanie czy użytkownik jest zalogowany
+  const isLoggedIn = !!localStorage.getItem('access_token');
+  const currentUsername = localStorage.getItem('username') || 'guest';
 
   useEffect(() => {
     if (!id) return;
+    
+    // Pobieranie indywidualnej oceny dla zalogowanego użytkownika
+    const userSpecificRatingKey = `recipe_rating_${id}_${currentUsername}`;
+    const savedRatingStr = isLoggedIn ? localStorage.getItem(userSpecificRatingKey) : null;
+    
+    // Średnia i ilość ocen są "globalne" dla przepisu
+    const savedCountStr = localStorage.getItem(`recipe_ratingCount_${id}`);
+    const savedAvgStr = localStorage.getItem(`recipe_averageRating_${id}`);
+    
+    if (savedRatingStr) {
+      setUserRating(Number(savedRatingStr));
+    } else {
+      setUserRating(null); // Reset jeśli inny użytkownik nie ma oceny
+    }
+
+    if (savedCountStr) setRatingCount(Number(savedCountStr));
+    if (savedAvgStr) setAverageRating(Number(savedAvgStr));
+
     fetchRecipeById(id)
       .then((data) => {
         setRecipe(data);
         setIsLiked(data.is_favorited === true);
+        
+        // Zastępujemy LocalStorage jeśli backend zwróci poprawne dane
+        if (data.user_rating && isLoggedIn) {
+            setUserRating(data.user_rating);
+            localStorage.setItem(userSpecificRatingKey, String(data.user_rating));
+        }
+        if (data.ratings_count) {
+            setRatingCount(data.ratings_count);
+            localStorage.setItem(`recipe_ratingCount_${id}`, String(data.ratings_count));
+        }
+        if (data.average_rating) {
+            setAverageRating(data.average_rating);
+            localStorage.setItem(`recipe_averageRating_${id}`, String(data.average_rating));
+        }
+
         setLoading(false);
       })
       .catch(() => {
         setError('Nie udało się pobrać szczegółów przepisu.');
         setLoading(false);
       });
-  }, [id]);
+  }, [id, currentUsername, isLoggedIn]);
 
   const handleLikeClick = async () => {
     if (!recipe?.id) return;
-
     setIsLiked(!isLiked);
-
     try {
       await toggleFavorite(recipe.id);
     } catch (err) {
       setIsLiked(isLiked);
       console.error("Błąd podczas polubienia przepisu:", err);
+    }
+  };
+
+  const handleShare = () => {
+    navigator.clipboard.writeText(window.location.href);
+    setShareTooltip(true);
+    setTimeout(() => setShareTooltip(false), 2000);
+  };
+
+  const handleRate = async (rate: number) => {
+    // Zabezpieczenie przed ocenianiem przez wylogowanych
+    if (!isLoggedIn) {
+      alert("Zaloguj się, aby móc ocenić ten przepis.");
+      return;
+    }
+
+    if (userRating === rate) return; 
+
+    let newCount = ratingCount;
+    let newAvg = averageRating;
+
+    // Jeżeli oceniamy pierwszy raz
+    if (userRating === null) {
+      newCount += 1;
+      newAvg = ratingCount === 0 ? rate : ((averageRating * ratingCount) + rate) / newCount;
+    } else {
+      // Zmiana oceny - odejmujemy stary userRating, dodajemy nowy
+      newAvg = ((averageRating * ratingCount) - userRating + rate) / ratingCount;
+    }
+
+    const finalAvg = Number(newAvg.toFixed(1));
+
+    // Natychmiastowa zmiana stanu UI
+    setAverageRating(finalAvg);
+    setRatingCount(newCount);
+    setUserRating(rate);
+    
+    // Zapis do LocalStorage symulujący bazę danych (osobny klucz dla użytkownika)
+    if (id) {
+        localStorage.setItem(`recipe_rating_${id}_${currentUsername}`, String(rate));
+        localStorage.setItem(`recipe_ratingCount_${id}`, String(newCount));
+        localStorage.setItem(`recipe_averageRating_${id}`, String(finalAvg));
+    }
+    
+    try {
+      const token = localStorage.getItem('access_token');
+      await fetch(`/api/recipes/${recipe?.id}/rate/`, {
+        method: 'POST', 
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ rating: rate })
+      });
+    } catch (err) {
+      console.error("Nie udało się zapisać oceny na serwerze, zapisano w symulacji frontendowej", err);
     }
   };
 
@@ -48,40 +148,20 @@ export const RecipeDetail: React.FC = () => {
     if (unitSystem === 'metric') {
       if (u === 'lb' || u === 'lbs' || u === 'pound' || u === 'pounds') {
         const grams = amount * 453.592;
-        return grams >= 1000 
-          ? `${(grams / 1000).toFixed(1)} kg` 
-          : `${Math.round(grams)} g`;
+        return grams >= 1000 ? `${(grams / 1000).toFixed(1)} kg` : `${Math.round(grams)} g`;
       }
-      if (u === 'oz' || u === 'ounce' || u === 'ounces') {
-        const grams = amount * 28.3495;
-        return `${Math.round(grams)} g`;
-      }
-
-      if (u === 'c') {
-        return `${amount} cup`;
-      }
-      if (u === 't' || u === 'tsp') {
-        return `${amount} teaspoon(s)`;
-      }
-      if (u === 't' || u === 'tbsp' || u === 'tablespoon' || u === 'Tbs') {
-        return `${amount} tablespoon(s)`;
-      }
-      if (u === 'szt') {
-        return `${amount} pcs`;
-      }
+      if (u === 'oz' || u === 'ounce' || u === 'ounces') return `${Math.round(amount * 28.3495)} g`;
+      if (u === 'c') return `${amount} cup`;
+      if (u === 't' || u === 'tsp') return `${amount} teaspoon(s)`;
+      if (u === 't' || u === 'tbsp' || u === 'tablespoon' || u === 'Tbs') return `${amount} tablespoon(s)`;
+      if (u === 'szt') return `${amount} pcs`;
 
       return `${amount} ${unit}`;
     }
 
-    if (u === 'g' || u === 'gram' || u === 'gramy') {
-      return `${(amount * 0.035274).toFixed(1)} oz`;
-    }
-    if (u === 'ml' || u === 'mililitrów') {
-      return `${(amount * 0.033814).toFixed(1)} fl oz`;
-    }
-    if (u === 'szt') {
-        return `${amount} pcs`;
-    }
+    if (u === 'g' || u === 'gram' || u === 'gramy') return `${(amount * 0.035274).toFixed(1)} oz`;
+    if (u === 'ml' || u === 'mililitrów') return `${(amount * 0.033814).toFixed(1)} fl oz`;
+    if (u === 'szt') return `${amount} pcs`;
 
     return `${amount} ${unit}`;
   };
@@ -90,12 +170,24 @@ export const RecipeDetail: React.FC = () => {
   if (error || !recipe) return <div className="status-msg error">{error || 'Nie znaleziono przepisu.'}</div>;
 
   const totalGrams = (recipe.protein || 0) + (recipe.carbs || 0) + (recipe.fat || 0) || 1;
-
   const proteinPct = Math.round(((recipe.protein || 0) / totalGrams) * 100);
   const carbsPct = Math.round(((recipe.carbs || 0) / totalGrams) * 100);
   const fatPct = Math.round(((recipe.fat || 0) / totalGrams) * 100);
 
   const recipeImage = recipe.get_image || recipe.image_url;
+
+  const modalSteps = (recipe.instructions || []).map((step, index) => {
+    const isObject = typeof step === 'object' && step !== null;
+    const stepText = isObject ? (step as any).text : step;
+    return { title: `Krok ${index + 1}`, description: stepText };
+  });
+
+  const modalIngredients = (recipe.ingredients || []).map((item) => {
+    const ingredientName = typeof item.ingredient === 'object' && item.ingredient !== null 
+      ? (item.ingredient as any).name 
+      : (item as any).ingredient_name || item.ingredient || 'Składnik';
+    return { id: item.id, name: ingredientName, amount: formatAmount(item.amount, item.unit) };
+  });
 
   return (
     <div className="recipe-page">
@@ -105,7 +197,9 @@ export const RecipeDetail: React.FC = () => {
           <div className="hero-left">
             <div className="tags-row">
               <span className="badge-green">100% CLEAN EATING</span>
-              <span className="rating-badge">★ 4.9 (128)</span>
+              {ratingCount > 0 && (
+                <span className="rating-badge">★ {averageRating} ({ratingCount})</span>
+              )}
             </div>
 
             <h1 className="hero-title">{recipe.title}</h1>
@@ -134,8 +228,11 @@ export const RecipeDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="action-buttons-row">
-              <button className="btn-primary-green primary-green">
+            <div className="action-buttons-row" style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
+              <button 
+                className="btn-primary-green primary-green"
+                onClick={() => setIsCookingModeOpen(true)}
+              >
                 <span className="icon"><Icon.ChefHat size={18} /></span> Start Cooking
               </button>
 
@@ -151,17 +248,67 @@ export const RecipeDetail: React.FC = () => {
                 />
               </button>
 
-              <button className="btn-icon"><Icon.Share2 size={18} /></button>
+              <div style={{ position: 'relative' }}>
+                <button className="btn-icon" onClick={handleShare}>
+                  <Icon.Share2 size={18} />
+                </button>
+                {shareTooltip && (
+                  <span style={{ 
+                    position: 'absolute', top: '-35px', left: '50%', transform: 'translateX(-50%)', 
+                    background: '#10b981', color: '#000', padding: '4px 10px', 
+                    borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
+                  }}>
+                    Skopiowano!
+                  </span>
+                )}
+              </div>
             </div>
+
+            {/* BANER OCENIANIA */}
+            <div className="rating-banner-container">
+              <div className="rating-banner-left">
+                <div className="rating-icon-circle">
+                  <Icon.Star size={20} color="#10b981" />
+                </div>
+                <div className="rating-texts">
+                  <h4>Rate this Recipe</h4>
+                  <p>Have you tried this dish? Share your rating</p>
+                </div>
+              </div>
+              <div className="rating-banner-right">
+                <div className="stars-container">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Icon.Star
+                      key={star}
+                      size={20}
+                      fill={star <= (hoveredStar !== null ? hoveredStar : (userRating || 0)) ? "#eab308" : "none"}
+                      color={star <= (hoveredStar !== null ? hoveredStar : (userRating || 0)) ? "#eab308" : "#6b7280"}
+                      onMouseEnter={() => setHoveredStar(star)}
+                      onMouseLeave={() => setHoveredStar(null)}
+                      onClick={() => handleRate(star)}
+                      style={{ 
+                        cursor: isLoggedIn ? 'pointer' : 'not-allowed', 
+                        transition: 'all 0.2s ease',
+                        transform: hoveredStar === star ? 'scale(1.15)' : 'scale(1)',
+                        opacity: !isLoggedIn && userRating === null ? 0.5 : 1
+                      }}
+                    />
+                  ))}
+                </div>
+                <div className="tap-to-rate">
+                  <span>TAP TO</span>
+                  <span>RATE</span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
           <div className="hero-right">
             <div className="main-image-wrapper">
               {recipeImage ? (
-                <img 
-                  src={recipeImage} 
-                  alt={recipe.title} 
-                />
+                <img src={recipeImage} alt={recipe.title} />
               ) : (
                 <div style={{ width: '100%', height: '300px', background: '#1c2420', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '16px', color: '#6b7280' }}>
                   Brak zdjęcia przepisu
@@ -204,33 +351,19 @@ export const RecipeDetail: React.FC = () => {
               <div className="chart-container">
                 <div className="bar-wrapper">
                   <div className="bar-track">
-                    <span 
-                      className="dot blue" 
-                      style={{ height: `${proteinPct}%` }} 
-                      title={`Białko: ${recipe.protein}g (${proteinPct}%)`}
-                    />
+                    <span className="dot blue" style={{ height: `${proteinPct}%` }} title={`Białko: ${recipe.protein}g (${proteinPct}%)`} />
                   </div>
                   <span className="bar-label">PROT</span>
                 </div>
-
                 <div className="bar-wrapper">
                   <div className="bar-track">
-                    <span 
-                      className="dot orange" 
-                      style={{ height: `${carbsPct}%` }} 
-                      title={`Węglowodany: ${recipe.carbs}g (${carbsPct}%)`}
-                    />
+                    <span className="dot orange" style={{ height: `${carbsPct}%` }} title={`Węglowodany: ${recipe.carbs}g (${carbsPct}%)`} />
                   </div>
                   <span className="bar-label">CARB</span>
                 </div>
-
                 <div className="bar-wrapper">
                   <div className="bar-track">
-                    <span 
-                      className="dot yellow" 
-                      style={{ height: `${fatPct}%` }} 
-                      title={`Tłuszcze: ${recipe.fat}g (${fatPct}%)`}
-                    />
+                    <span className="dot yellow" style={{ height: `${fatPct}%` }} title={`Tłuszcze: ${recipe.fat}g (${fatPct}%)`} />
                   </div>
                   <span className="bar-label">FAT</span>
                 </div>
@@ -292,19 +425,8 @@ export const RecipeDetail: React.FC = () => {
                 <h3>Ingredients</h3>
                 <div className="toggle-group">
                   <div className={`toggle-slider ${unitSystem === 'us' ? 'is-us' : ''}`} />
-
-                  <button 
-                    className={`toggle-btn ${unitSystem === 'metric' ? 'active' : ''}`}
-                    onClick={() => setUnitSystem('metric')}
-                  >
-                    Metric
-                  </button>
-                  <button 
-                    className={`toggle-btn ${unitSystem === 'us' ? 'active' : ''}`}
-                    onClick={() => setUnitSystem('us')}
-                  >
-                    US
-                  </button>
+                  <button className={`toggle-btn ${unitSystem === 'metric' ? 'active' : ''}`} onClick={() => setUnitSystem('metric')}>Metric</button>
+                  <button className={`toggle-btn ${unitSystem === 'us' ? 'active' : ''}`} onClick={() => setUnitSystem('us')}>US</button>
                 </div>
               </div>
 
@@ -334,19 +456,16 @@ export const RecipeDetail: React.FC = () => {
               </ul>
 
             </div>
-
           </aside>
 
         </div>
 
         <section className="community-section">
           <h2>Community <span className="badge-count">24 Reviews</span></h2>
-
           <div className="comment-input-box">
             <input type="text" placeholder="Share your experience..." />
             <button className="btn-post">Post</button>
           </div>
-
           <div className="comments-list">
             <div className="comment-item">
               <div className="avatar">SJ</div>
@@ -366,6 +485,14 @@ export const RecipeDetail: React.FC = () => {
         </section>
 
       </div>
+
+      <CookingModeModal
+        isOpen={isCookingModeOpen}
+        onClose={() => setIsCookingModeOpen(false)}
+        recipeTitle={recipe.title}
+        steps={modalSteps}
+        ingredients={modalIngredients}
+      />
     </div>
   );
 };

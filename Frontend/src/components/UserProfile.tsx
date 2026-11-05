@@ -55,7 +55,7 @@ export const UserProfile: React.FC = () => {
   
   const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([]);
   const [loadingFavorites, setLoadingFavorites] = useState(false);
-  const [showAllFavorites, setShowAllFavorites] = useState(false); // NOWY STAN DLA PRZYCISKU "POKAŻ WIĘCEJ"
+  const [showAllFavorites, setShowAllFavorites] = useState(false);
   
   const [myRecipes, setMyRecipes] = useState<Recipe[]>([]);
   
@@ -71,7 +71,6 @@ export const UserProfile: React.FC = () => {
 
   const [isOwnProfile, setIsOwnProfile] = useState<boolean>(false);
 
-  // === STANY DLA SYSTEMU KOLEKCJI (Z tymczasowym localStorage do testów) ===
   const [collections, setCollections] = useState<CustomCollection[]>([]);
   const [activeCollectionId, setActiveCollectionId] = useState<string | null>(null);
   
@@ -81,7 +80,6 @@ export const UserProfile: React.FC = () => {
   const [isAddingRecipes, setIsAddingRecipes] = useState(false);
   const [selectedRecipeIds, setSelectedRecipeIds] = useState<number[]>([]);
 
-  // Zapisywanie folderów do localStorage za każdym razem, gdy się zmienią
   useEffect(() => {
     if (profile && collections.length > 0) {
       localStorage.setItem(`mock_collections_${profile.username}`, JSON.stringify(collections));
@@ -154,7 +152,6 @@ export const UserProfile: React.FC = () => {
         const data: UserProfileData = await response.json();
         setProfile(data);
 
-        // Załadowanie mockowanych kolekcji przypisanych do tego konkretnego profilu
         const savedCollections = localStorage.getItem(`mock_collections_${data.username}`);
         if (savedCollections) {
           setCollections(JSON.parse(savedCollections));
@@ -332,8 +329,7 @@ export const UserProfile: React.FC = () => {
   };
 
   const activeCollectionObj = collections.find(c => c.id === activeCollectionId);
-  
-  // LOGIKA "POKAŻ WIĘCEJ" W ULUBIONYCH
+
   const displayedFavorites = showAllFavorites ? favoriteRecipes : favoriteRecipes.slice(0, 5);
   const hasMoreFavorites = favoriteRecipes.length > 5 && !showAllFavorites;
 
@@ -442,7 +438,6 @@ export const UserProfile: React.FC = () => {
         )}
       </nav>
 
-      {/* SEKCJA: FAVORITES */}
       {activeTab === 'favorites' && (isOwnProfile || profile.is_favorites_public) && (
         <section className="profile-section">
           <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -492,8 +487,7 @@ export const UserProfile: React.FC = () => {
                   </div>
                 </div>
               ))}
-              
-              {/* Przycisk "Odkryj więcej" renderowany jako 6. kafelek */}
+
               {hasMoreFavorites && (
                 <div 
                   className="save-recipe-card" 
@@ -521,7 +515,6 @@ export const UserProfile: React.FC = () => {
         </section>
       )}
 
-      {/* SEKCJA: COLLECTIONS */}
       {activeTab === 'collections' && (isOwnProfile || profile.is_collections_public) && (
         <section className="profile-section">
           {!activeCollectionId ? (
@@ -628,7 +621,6 @@ export const UserProfile: React.FC = () => {
         </section>
       )}
 
-      {/* SEKCJA: HISTORY */}
       {activeTab === 'history' && (isOwnProfile || profile.is_history_public) && (
         <section className="profile-section">
           <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -656,7 +648,6 @@ export const UserProfile: React.FC = () => {
         </section>
       )}
 
-      {/* SEKCJA: MY RECIPES */}
       {activeTab === 'myRecipes' && (isOwnProfile || profile.is_my_recipes_public) && (
         <section className="profile-section">
           <div className="section-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
