@@ -51,13 +51,13 @@
   font-size: 0.8rem;
 }
 
-/* --- Rate Banner (Zgodnie z nowym designem) --- */
+
 .rating-banner-container {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background-color: #171c19; /* Trochę jaśniejsze, miękkie tło jak na zdjęciu */
-  border-radius: 100px; /* Pełne zaokrąglenie pigułki */
+  background-color: #171c19;
+  border-radius: 100px;
   padding: 12px 12px 12px 24px;
   margin-top: 30px;
   margin-bottom: 20px;
@@ -98,7 +98,7 @@
   display: flex;
   align-items: center;
   gap: 16px;
-  background-color: #212824; /* Tło wewnętrznej pigułki z gwiazdkami */
+  background-color: #212824;
   padding: 10px 20px;
   border-radius: 100px;
 }
@@ -141,7 +141,7 @@
 
 .tap-to-rate {
   display: flex;
-  flex-direction: column; /* Wymusza dwie linie tekstu */
+  flex-direction: column;
   color: #6b7280;
   font-size: 0.65rem;
   font-weight: 700;
@@ -150,7 +150,7 @@
   padding-left: 12px;
   border-left: 1px solid rgba(255, 255, 255, 0.1);
   line-height: 1.2;
-  min-width: max-content; /* Zapobiega ściskaniu przez flexbox */
+  min-width: max-content;
 }
 
 @media (max-width: 768px) {

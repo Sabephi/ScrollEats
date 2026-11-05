@@ -18,31 +18,27 @@ export const RecipeDetail: React.FC = () => {
   const [isCookingModeOpen, setIsCookingModeOpen] = useState(false);
   const [shareTooltip, setShareTooltip] = useState(false);
 
-  // Stany do systemu ocen
   const [averageRating, setAverageRating] = useState(0);
   const [ratingCount, setRatingCount] = useState(0);
   const [userRating, setUserRating] = useState<number | null>(null);
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
 
-  // Sprawdzanie czy użytkownik jest zalogowany
   const isLoggedIn = !!localStorage.getItem('access_token');
   const currentUsername = localStorage.getItem('username') || 'guest';
 
   useEffect(() => {
     if (!id) return;
-    
-    // Pobieranie indywidualnej oceny dla zalogowanego użytkownika
+
     const userSpecificRatingKey = `recipe_rating_${id}_${currentUsername}`;
     const savedRatingStr = isLoggedIn ? localStorage.getItem(userSpecificRatingKey) : null;
-    
-    // Średnia i ilość ocen są "globalne" dla przepisu
+
     const savedCountStr = localStorage.getItem(`recipe_ratingCount_${id}`);
     const savedAvgStr = localStorage.getItem(`recipe_averageRating_${id}`);
     
     if (savedRatingStr) {
       setUserRating(Number(savedRatingStr));
     } else {
-      setUserRating(null); // Reset jeśli inny użytkownik nie ma oceny
+      setUserRating(null);
     }
 
     if (savedCountStr) setRatingCount(Number(savedCountStr));
@@ -52,8 +48,7 @@ export const RecipeDetail: React.FC = () => {
       .then((data) => {
         setRecipe(data);
         setIsLiked(data.is_favorited === true);
-        
-        // Zastępujemy LocalStorage jeśli backend zwróci poprawne dane
+
         if (data.user_rating && isLoggedIn) {
             setUserRating(data.user_rating);
             localStorage.setItem(userSpecificRatingKey, String(data.user_rating));
@@ -93,7 +88,6 @@ export const RecipeDetail: React.FC = () => {
   };
 
   const handleRate = async (rate: number) => {
-    // Zabezpieczenie przed ocenianiem przez wylogowanych
     if (!isLoggedIn) {
       alert("Zaloguj się, aby móc ocenić ten przepis.");
       return;
@@ -104,23 +98,19 @@ export const RecipeDetail: React.FC = () => {
     let newCount = ratingCount;
     let newAvg = averageRating;
 
-    // Jeżeli oceniamy pierwszy raz
     if (userRating === null) {
       newCount += 1;
       newAvg = ratingCount === 0 ? rate : ((averageRating * ratingCount) + rate) / newCount;
     } else {
-      // Zmiana oceny - odejmujemy stary userRating, dodajemy nowy
       newAvg = ((averageRating * ratingCount) - userRating + rate) / ratingCount;
     }
 
     const finalAvg = Number(newAvg.toFixed(1));
 
-    // Natychmiastowa zmiana stanu UI
     setAverageRating(finalAvg);
     setRatingCount(newCount);
     setUserRating(rate);
-    
-    // Zapis do LocalStorage symulujący bazę danych (osobny klucz dla użytkownika)
+
     if (id) {
         localStorage.setItem(`recipe_rating_${id}_${currentUsername}`, String(rate));
         localStorage.setItem(`recipe_ratingCount_${id}`, String(newCount));
@@ -265,7 +255,6 @@ export const RecipeDetail: React.FC = () => {
               </div>
             </div>
 
-            {/* BANER OCENIANIA */}
             <div className="rating-banner-container">
               <div className="rating-banner-left">
                 <div className="rating-icon-circle">
