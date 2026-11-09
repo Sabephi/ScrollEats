@@ -4,6 +4,7 @@ import { fetchRecipes, type Recipe } from './api';
 import { Navbar } from './components/Navbar';
 import { RecipeCard } from './components/RecipeCard';
 import { RecipeDetail } from './components/RecipeDetail';
+import { MealPlan } from './components/MealPlan';
 import AddRecipe from './components/AddRecipe';
 import UserProfile from './components/UserProfile';
 import Auth from './components/Auth';
@@ -26,12 +27,8 @@ function HomeFeed() {
     try {
       const data = await fetchRecipes(page);
 
-      console.log('Dane z API:', data);
-
       const newRecipes = Array.isArray(data) ? data : data.results || [];
       
-      console.log('Wyciągnięte przepisy:', newRecipes);
-
       setRecipes((prev) => [...prev, ...newRecipes]);
       
       const hasNextPage = Array.isArray(data) ? false : !!data.next;
@@ -110,9 +107,9 @@ export function App() {
         <Route path="/recipes/:id" element={<RecipeDetail />} />
         <Route path="/add-recipe" element={<AddRecipe />} />
         <Route path="/profile" element={<UserProfile />} />
-        <Route path="/auth" element={<Auth />} />
-        <Route path="/profile" element={<UserProfile />} />
         <Route path="/profile/:username" element={<UserProfile />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/meal-plan" element={<MealPlan />} />
       </Routes>
     </BrowserRouter>
   );
