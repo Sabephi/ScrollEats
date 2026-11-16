@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { fetchRecipeById, toggleFavorite, type Recipe } from '../api';
 import { CookingModeModal } from './CookingModeModal';
+import defaultAvatar from '../assets/default_avatar.jpg';
 import './RecipeDetail.css';
 import * as Icon from 'lucide-react';
+
+interface RecipeComment {
+  id: string;
+  username: string;
+  avatarUrl: string | null;
+  text: string;
+  date: string;
+  likes: number;
+}
 
 export const RecipeDetail: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -14,7 +24,7 @@ export const RecipeDetail: React.FC = () => {
 
   const [unitSystem, setUnitSystem] = useState<'metric' | 'us'>('metric');
   const [isLiked, setIsLiked] = useState<boolean>(false);
-  
+
   const [isCookingModeOpen, setIsCookingModeOpen] = useState(false);
   const [shareTooltip, setShareTooltip] = useState(false);
 
@@ -23,8 +33,61 @@ export const RecipeDetail: React.FC = () => {
   const [userRating, setUserRating] = useState<number | null>(null);
   const [hoveredStar, setHoveredStar] = useState<number | null>(null);
 
+  const [comments, setComments] = useState<RecipeComment[]>([]);
+  const [newCommentText, setNewCommentText] = useState("");
+  const [userLikedComments, setUserLikedComments] = useState<string[]>([]);
+  const [lastCommentTime, setLastCommentTime] = useState<number>(0);
+
+  const [userAvatarsCache, setUserAvatarsCache] = useState<Record<string, string>>({});
+
   const isLoggedIn = !!localStorage.getItem('access_token');
   const currentUsername = localStorage.getItem('username') || 'guest';
+  const token = localStorage.getItem('access_token');
+
+  const getFullAvatarUrl = (url: string | null) => {
+    if (!url) return null;
+    if (url.startsWith('http')) return url;
+    return `http://127.0.0.1:8000${url.startsWith('/') ? '' : '/'}${url}`;
+  };
+
+  const fetchAvatarForUser = async (username: string) => {
+    if (!username || userAvatarsCache[username]) return;
+    try {
+      const res = await fetch(`/api/users/profile/${username}/`, {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.avatar) {
+          setUserAvatarsCache(prev => ({ ...prev, [username]: getFullAvatarUrl(data.avatar) || '' }));
+        }
+      }
+    } catch (e) {
+    }
+  };
+
+  useEffect(() => {
+    if (isLoggedIn && token) {
+      fetch('/api/users/profile/', {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+      })
+        .then((res) => res.ok ? res.json() : null)
+        .then((data) => {
+          if (data && data.username && data.avatar) {
+            const fullUrl = getFullAvatarUrl(data.avatar);
+            if (fullUrl) {
+              setUserAvatarsCache(prev => ({ ...prev, [data.username]: fullUrl }));
+            }
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isLoggedIn, token]);
 
   useEffect(() => {
     if (!id) return;
@@ -34,32 +97,53 @@ export const RecipeDetail: React.FC = () => {
 
     const savedCountStr = localStorage.getItem(`recipe_ratingCount_${id}`);
     const savedAvgStr = localStorage.getItem(`recipe_averageRating_${id}`);
-    
-    if (savedRatingStr) {
-      setUserRating(Number(savedRatingStr));
-    } else {
-      setUserRating(null);
-    }
+    const savedCommentsStr = localStorage.getItem(`recipe_comments_${id}`);
+
+    if (savedRatingStr) setUserRating(Number(savedRatingStr));
+    else setUserRating(null);
 
     if (savedCountStr) setRatingCount(Number(savedCountStr));
     if (savedAvgStr) setAverageRating(Number(savedAvgStr));
 
+    if (savedCommentsStr) {
+      try {
+        const parsedComments = JSON.parse(savedCommentsStr);
+        setComments(parsedComments);
+        parsedComments.forEach((c: RecipeComment) => {
+          if (c.username) fetchAvatarForUser(c.username);
+        });
+      } catch (e) {
+        setComments([]);
+      }
+    }
+
+    if (isLoggedIn) {
+      const savedLikedComments = localStorage.getItem(`liked_comments_${currentUsername}`);
+      if (savedLikedComments) setUserLikedComments(JSON.parse(savedLikedComments));
+    } else {
+      setUserLikedComments([]);
+    }
+
     fetchRecipeById(id)
-      .then((data) => {
+      .then((data: any) => {
         setRecipe(data);
         setIsLiked(data.is_favorited === true);
 
+        if (data.author_username) {
+          fetchAvatarForUser(data.author_username);
+        }
+
         if (data.user_rating && isLoggedIn) {
-            setUserRating(data.user_rating);
-            localStorage.setItem(userSpecificRatingKey, String(data.user_rating));
+          setUserRating(data.user_rating);
+          localStorage.setItem(userSpecificRatingKey, String(data.user_rating));
         }
         if (data.ratings_count) {
-            setRatingCount(data.ratings_count);
-            localStorage.setItem(`recipe_ratingCount_${id}`, String(data.ratings_count));
+          setRatingCount(data.ratings_count);
+          localStorage.setItem(`recipe_ratingCount_${id}`, String(data.ratings_count));
         }
         if (data.average_rating) {
-            setAverageRating(data.average_rating);
-            localStorage.setItem(`recipe_averageRating_${id}`, String(data.average_rating));
+          setAverageRating(data.average_rating);
+          localStorage.setItem(`recipe_averageRating_${id}`, String(data.average_rating));
         }
 
         setLoading(false);
@@ -77,7 +161,6 @@ export const RecipeDetail: React.FC = () => {
       await toggleFavorite(recipe.id);
     } catch (err) {
       setIsLiked(isLiked);
-      console.error("Błąd podczas polubienia przepisu:", err);
     }
   };
 
@@ -92,8 +175,7 @@ export const RecipeDetail: React.FC = () => {
       alert("Zaloguj się, aby móc ocenić ten przepis.");
       return;
     }
-
-    if (userRating === rate) return; 
+    if (userRating === rate) return;
 
     let newCount = ratingCount;
     let newAvg = averageRating;
@@ -112,24 +194,113 @@ export const RecipeDetail: React.FC = () => {
     setUserRating(rate);
 
     if (id) {
-        localStorage.setItem(`recipe_rating_${id}_${currentUsername}`, String(rate));
-        localStorage.setItem(`recipe_ratingCount_${id}`, String(newCount));
-        localStorage.setItem(`recipe_averageRating_${id}`, String(finalAvg));
+      localStorage.setItem(`recipe_rating_${id}_${currentUsername}`, String(rate));
+      localStorage.setItem(`recipe_ratingCount_${id}`, String(newCount));
+      localStorage.setItem(`recipe_averageRating_${id}`, String(finalAvg));
     }
-    
+
     try {
-      const token = localStorage.getItem('access_token');
       await fetch(`/api/recipes/${recipe?.id}/rate/`, {
-        method: 'POST', 
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({ rating: rate })
       });
-    } catch (err) {
-      console.error("Nie udało się zapisać oceny na serwerze, zapisano w symulacji frontendowej", err);
+    } catch (err) {}
+  };
+
+  const handlePostComment = () => {
+    if (!isLoggedIn) {
+      alert("Musisz być zalogowany, aby dodać komentarz.");
+      return;
     }
+    if (!newCommentText.trim()) return;
+
+    const now = Date.now();
+    if (now - lastCommentTime < 5000) {
+      alert("Poczekaj 5 sekund przed dodaniem kolejnego komentarza.");
+      return;
+    }
+
+    const dzisiaj = new Date().toDateString();
+    const komentarzeDzisiaj = comments.filter(c =>
+      c.username === currentUsername && new Date(c.date).toDateString() === dzisiaj
+    );
+
+    if (komentarzeDzisiaj.length >= 10) {
+      alert("Osiągnąłeś dzienny limit 10 komentarzy dla tego przepisu.");
+      return;
+    }
+
+    const myAvatar = userAvatarsCache[currentUsername] || null;
+
+    const nowyKomentarz: RecipeComment = {
+      id: Date.now().toString(),
+      username: currentUsername,
+      avatarUrl: myAvatar,
+      text: newCommentText.trim(),
+      date: new Date().toISOString(),
+      likes: 0
+    };
+
+    const noweKomentarze = [nowyKomentarz, ...comments];
+    setComments(noweKomentarze);
+    setNewCommentText("");
+    setLastCommentTime(now);
+
+    if (id) localStorage.setItem(`recipe_comments_${id}`, JSON.stringify(noweKomentarze));
+  };
+
+  const handleLikeComment = (commentId: string) => {
+    if (!isLoggedIn) {
+      alert("Zaloguj się, aby móc polubić komentarz.");
+      return;
+    }
+
+    const isCommentLiked = userLikedComments.includes(commentId);
+    let updatedUserLikes = [...userLikedComments];
+
+    if (isCommentLiked) {
+      updatedUserLikes = updatedUserLikes.filter(id => id !== commentId);
+    } else {
+      updatedUserLikes.push(commentId);
+    }
+
+    setUserLikedComments(updatedUserLikes);
+    localStorage.setItem(`liked_comments_${currentUsername}`, JSON.stringify(updatedUserLikes));
+
+    const updatedComments = comments.map(c => {
+      if (c.id === commentId) return { ...c, likes: isCommentLiked ? c.likes - 1 : c.likes + 1 };
+      return c;
+    });
+
+    setComments(updatedComments);
+    if (id) localStorage.setItem(`recipe_comments_${id}`, JSON.stringify(updatedComments));
+  };
+
+  const handleDeleteComment = (commentId: string) => {
+    if (!window.confirm("Czy na pewno chcesz usunąć ten komentarz?")) return;
+
+    const updatedComments = comments.filter(c => c.id !== commentId);
+    setComments(updatedComments);
+    if (id) localStorage.setItem(`recipe_comments_${id}`, JSON.stringify(updatedComments));
+  };
+
+  const handleReportComment = () => {
+    alert("Zgłoszenie zostało wysłane. Dziękujemy za dbanie o społeczność.");
+  };
+
+  const timeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+    if (diffInSeconds < 60) return 'Przed chwilą';
+    if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)} min temu`;
+    if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)} godz. temu`;
+    return `${Math.floor(diffInSeconds / 86400)} dni temu`;
   };
 
   const formatAmount = (amount: number, unit: string) => {
@@ -143,7 +314,7 @@ export const RecipeDetail: React.FC = () => {
       if (u === 'oz' || u === 'ounce' || u === 'ounces') return `${Math.round(amount * 28.3495)} g`;
       if (u === 'c') return `${amount} cup`;
       if (u === 't' || u === 'tsp') return `${amount} teaspoon(s)`;
-      if (u === 't' || u === 'tbsp' || u === 'tablespoon' || u === 'Tbs') return `${amount} tablespoon(s)`;
+      if (u === 'tbsp' || u === 'tablespoon' || u === 'tbs') return `${amount} tablespoon(s)`;
       if (u === 'szt') return `${amount} pcs`;
 
       return `${amount} ${unit}`;
@@ -166,6 +337,14 @@ export const RecipeDetail: React.FC = () => {
 
   const recipeImage = recipe.get_image || recipe.image_url;
 
+  const authorName = recipe.author_username || '';
+  const rawAuthorAvatar = (recipe as any).author_avatar || (recipe as any).author?.avatar || null;
+  const authorAvatarUrl = (authorName && userAvatarsCache[authorName]) || getFullAvatarUrl(rawAuthorAvatar) || defaultAvatar;
+
+  if (authorName && !userAvatarsCache[authorName]) {
+    fetchAvatarForUser(authorName);
+  }
+
   const modalSteps = (recipe.instructions || []).map((step, index) => {
     const isObject = typeof step === 'object' && step !== null;
     const stepText = isObject ? (step as any).text : step;
@@ -173,8 +352,8 @@ export const RecipeDetail: React.FC = () => {
   });
 
   const modalIngredients = (recipe.ingredients || []).map((item) => {
-    const ingredientName = typeof item.ingredient === 'object' && item.ingredient !== null 
-      ? (item.ingredient as any).name 
+    const ingredientName = typeof item.ingredient === 'object' && item.ingredient !== null
+      ? (item.ingredient as any).name
       : (item as any).ingredient_name || item.ingredient || 'Składnik';
     return { id: item.id, name: ingredientName, amount: formatAmount(item.amount, item.unit) };
   });
@@ -198,14 +377,23 @@ export const RecipeDetail: React.FC = () => {
             <div className="meta-info-row">
               <div className="meta-item">
                 <span className="meta-label">Created By</span>
-                <div 
-                  className="author-box" 
-                  onClick={() => recipe.author_username && navigate(`/profile/${recipe.author_username}`)}
-                  style={{ cursor: 'pointer' }}
+                <Link
+                  to={`/profile/${authorName}`}
+                  className="author-box"
+                  style={{ cursor: 'pointer', textDecoration: 'none' }}
                 >
-                  <div className="avatar">👤</div>
-                  <span className="meta-value">{recipe.author_username || 'Chef'}</span>
-                </div>
+                  <div className="avatar" style={{ overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img
+                      src={authorAvatarUrl}
+                      alt={authorName || 'Chef'}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = defaultAvatar;
+                      }}
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                    />
+                  </div>
+                  <span className="meta-value" style={{ color: '#f3f4f6' }}>{authorName || 'Chef'}</span>
+                </Link>
               </div>
 
               <div className="meta-item">
@@ -219,22 +407,22 @@ export const RecipeDetail: React.FC = () => {
             </div>
 
             <div className="action-buttons-row" style={{ display: 'flex', alignItems: 'center', gap: '15px', flexWrap: 'wrap' }}>
-              <button 
+              <button
                 className="btn-primary-green primary-green"
                 onClick={() => setIsCookingModeOpen(true)}
               >
                 <span className="icon"><Icon.ChefHat size={18} /></span> Start Cooking
               </button>
 
-              <button 
-                className="btn-icon" 
+              <button
+                className="btn-icon"
                 onClick={handleLikeClick}
                 style={{ color: isLiked ? '#ef4444' : 'inherit' }}
               >
-                <Icon.Heart 
-                  size={18} 
-                  fill={isLiked ? "#ef4444" : "none"} 
-                  color={isLiked ? "#ef4444" : "currentColor"} 
+                <Icon.Heart
+                  size={18}
+                  fill={isLiked ? "#ef4444" : "none"}
+                  color={isLiked ? "#ef4444" : "currentColor"}
                 />
               </button>
 
@@ -243,9 +431,9 @@ export const RecipeDetail: React.FC = () => {
                   <Icon.Share2 size={18} />
                 </button>
                 {shareTooltip && (
-                  <span style={{ 
-                    position: 'absolute', top: '-35px', left: '50%', transform: 'translateX(-50%)', 
-                    background: '#10b981', color: '#000', padding: '4px 10px', 
+                  <span style={{
+                    position: 'absolute', top: '-35px', left: '50%', transform: 'translateX(-50%)',
+                    background: '#10b981', color: '#000', padding: '4px 10px',
                     borderRadius: '6px', fontSize: '12px', fontWeight: 'bold', whiteSpace: 'nowrap',
                     boxShadow: '0 4px 6px rgba(0,0,0,0.3)'
                   }}>
@@ -276,8 +464,8 @@ export const RecipeDetail: React.FC = () => {
                       onMouseEnter={() => setHoveredStar(star)}
                       onMouseLeave={() => setHoveredStar(null)}
                       onClick={() => handleRate(star)}
-                      style={{ 
-                        cursor: isLoggedIn ? 'pointer' : 'not-allowed', 
+                      style={{
+                        cursor: isLoggedIn ? 'pointer' : 'not-allowed',
                         transition: 'all 0.2s ease',
                         transform: hoveredStar === star ? 'scale(1.15)' : 'scale(1)',
                         opacity: !isLoggedIn && userRating === null ? 0.5 : 1
@@ -363,7 +551,7 @@ export const RecipeDetail: React.FC = () => {
         </section>
 
         <div className="recipe-content-layout">
-          
+
           <section className="steps-column">
             <div className="steps-header">
               <h2>Cooking Steps</h2>
@@ -401,7 +589,7 @@ export const RecipeDetail: React.FC = () => {
           </section>
 
           <aside className="sidebar-column">
-            
+
             <div className="allergen-card">
               <div className="allergen-title">
                 <span className="red-dot"></span> ALLERGEN ALERT
@@ -422,8 +610,8 @@ export const RecipeDetail: React.FC = () => {
               <ul className="ingredients-checklist">
                 {recipe.ingredients && recipe.ingredients.length > 0 ? (
                   recipe.ingredients.map((item) => {
-                    const ingredientName = typeof item.ingredient === 'object' && item.ingredient !== null 
-                      ? (item.ingredient as any).name 
+                    const ingredientName = typeof item.ingredient === 'object' && item.ingredient !== null
+                      ? (item.ingredient as any).name
                       : (item as any).ingredient_name || item.ingredient || 'Składnik';
 
                     return (
@@ -450,26 +638,98 @@ export const RecipeDetail: React.FC = () => {
         </div>
 
         <section className="community-section">
-          <h2>Community <span className="badge-count">24 Reviews</span></h2>
+          <h2>Community <span className="badge-count">{comments.length} Reviews</span></h2>
+
           <div className="comment-input-box">
-            <input type="text" placeholder="Share your experience..." />
-            <button className="btn-post">Post</button>
+            <input
+              type="text"
+              placeholder={isLoggedIn ? "Dzień dobry..." : "Zaloguj się, aby dodać komentarz..."}
+              value={newCommentText}
+              onChange={(e) => setNewCommentText(e.target.value)}
+              disabled={!isLoggedIn}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handlePostComment();
+              }}
+            />
+            <button className="btn-post" onClick={handlePostComment} disabled={!isLoggedIn || !newCommentText.trim()}>
+              Post
+            </button>
           </div>
+
           <div className="comments-list">
-            <div className="comment-item">
-              <div className="avatar">SJ</div>
-              <div className="comment-body">
-                <div className="comment-author">
-                  <strong>Sam Jenkins</strong>
-                  <span className="comment-time">2 days ago</span>
-                </div>
-                <p>Absolutely loved it! I swapped out Thai Basil as it was out of stock locally. Cut the technique of flash frying garlic first, absolute game changer! 🔥</p>
-                <div className="comment-actions">
-                  <span>♥ 142</span>
-                  <span>Reply</span>
-                </div>
-              </div>
-            </div>
+            {comments.length === 0 ? (
+              <p style={{ color: '#9ca3af', fontSize: '0.9rem', textAlign: 'center', margin: '20px 0' }}>
+                Brak komentarzy. Bądź pierwszym, który oceni ten przepis!
+              </p>
+            ) : (
+              comments.map((c) => {
+                const isCommentLiked = userLikedComments.includes(c.id);
+                const canDelete = isLoggedIn && (c.username === currentUsername || recipe.author_username === currentUsername);
+
+                const commentAuthorAvatar = userAvatarsCache[c.username] || getFullAvatarUrl(c.avatarUrl) || defaultAvatar;
+                if (c.username && !userAvatarsCache[c.username]) {
+                  fetchAvatarForUser(c.username);
+                }
+
+                return (
+                  <div className="comment-item" key={c.id}>
+                    <Link to={`/profile/${c.username}`} className="comment-avatar-link" style={{ padding: 0, overflow: 'hidden' }}>
+                      <img
+                        src={commentAuthorAvatar}
+                        alt={c.username}
+                        className="comment-avatar-img"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = defaultAvatar;
+                        }}
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </Link>
+
+                    <div className="comment-body" style={{ width: '100%' }}>
+                      <div className="comment-author">
+                        <Link to={`/profile/${c.username}`} className="comment-author-name">
+                          <strong>{c.username}</strong>
+                        </Link>
+                        <span className="comment-time">{timeAgo(c.date)}</span>
+                      </div>
+
+                      <p style={{ marginTop: '8px', marginBottom: '8px' }}>{c.text}</p>
+
+                      <div className="comment-actions">
+                        <button
+                          className={`btn-comment-action ${isCommentLiked ? 'liked' : ''}`}
+                          onClick={() => handleLikeComment(c.id)}
+                          disabled={!isLoggedIn}
+                          title={!isLoggedIn ? "Zaloguj się, aby polubić" : ""}
+                        >
+                          <Icon.Heart size={14} fill={isCommentLiked ? "#ef4444" : "none"} color={isCommentLiked ? "#ef4444" : "currentColor"} />
+                          {c.likes}
+                        </button>
+
+                        <button
+                          className="btn-comment-action"
+                          onClick={handleReportComment}
+                          disabled={!isLoggedIn}
+                          title={!isLoggedIn ? "Zaloguj się, aby zgłosić" : "Zgłoś komentarz"}
+                        >
+                          <Icon.Flag size={14} /> Zgłoś
+                        </button>
+
+                        {canDelete && (
+                          <button
+                            className="btn-comment-action delete"
+                            onClick={() => handleDeleteComment(c.id)}
+                            title="Usuń komentarz"
+                          >
+                            <Icon.Trash2 size={14} /> Usuń
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </section>
 
@@ -478,6 +738,7 @@ export const RecipeDetail: React.FC = () => {
       <CookingModeModal
         isOpen={isCookingModeOpen}
         onClose={() => setIsCookingModeOpen(false)}
+        recipeId={recipe.id}
         recipeTitle={recipe.title}
         steps={modalSteps}
         ingredients={modalIngredients}

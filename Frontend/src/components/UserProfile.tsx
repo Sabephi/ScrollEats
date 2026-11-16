@@ -11,13 +11,14 @@ import {
   Heart,
   History,
   MapPin,
-  Star,
   Eye,
   EyeOff,
   Folder,
-  ArrowLeft
+  ArrowLeft,
+  Flame
 } from 'lucide-react';
 import { fetchFavorites, toggleFavorite, fetchRecipes, type Recipe } from '../api';
+import defaultAvatar from '../assets/default_avatar.jpg';
 import './UserProfile.css';
 
 interface UserProfileData {
@@ -58,6 +59,7 @@ export const UserProfile: React.FC = () => {
   const [showAllFavorites, setShowAllFavorites] = useState(false);
   
   const [myRecipes, setMyRecipes] = useState<Recipe[]>([]);
+  const [cookedCount, setCookedCount] = useState<number>(0);
   
   const [isEditing, setIsEditing] = useState(false);
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -151,6 +153,18 @@ export const UserProfile: React.FC = () => {
         if (!response.ok) throw new Error('Nie udało się pobrać profilu.');
         const data: UserProfileData = await response.json();
         setProfile(data);
+
+        try {
+          const savedCooked = localStorage.getItem(`cooked_history_${data.username}`);
+          if (savedCooked) {
+            const parsedCooked = JSON.parse(savedCooked);
+            setCookedCount(Array.isArray(parsedCooked) ? parsedCooked.length : 0);
+          } else {
+            setCookedCount(0);
+          }
+        } catch {
+          setCookedCount(0);
+        }
 
         const savedCollections = localStorage.getItem(`mock_collections_${data.username}`);
         if (savedCollections) {
@@ -279,11 +293,17 @@ export const UserProfile: React.FC = () => {
     
     const previousFavorites = [...favoriteRecipes];
     setFavoriteRecipes((prev) => prev.filter((r) => r.id !== recipeId));
+    setProfile((prev) =>
+      prev ? { ...prev, saved_count: Math.max(0, (prev.saved_count || 1) - 1) } : prev
+    );
 
     try {
       await toggleFavorite(recipeId);
     } catch (err) {
       setFavoriteRecipes(previousFavorites);
+      setProfile((prev) =>
+        prev ? { ...prev, saved_count: (prev.saved_count || 0) + 1 } : prev
+      );
     }
   };
 
@@ -305,7 +325,7 @@ export const UserProfile: React.FC = () => {
   const handleSaveRecipesToFolder = () => {
     if (!activeCollectionId) return;
     
-    const selectedRecipesObjects = favoriteRecipes.filter(r => selectedRecipeIds.includes(r.id));
+    const selectedRecipesObjects = favoriteRecipes.filter(r => r.id !== undefined && selectedRecipeIds.includes(r.id));
     
     setCollections(prev => prev.map(col => {
       if (col.id === activeCollectionId) {
@@ -320,7 +340,8 @@ export const UserProfile: React.FC = () => {
     setSelectedRecipeIds([]);
   };
 
-  const toggleRecipeSelection = (recipeId: number) => {
+  const toggleRecipeSelection = (recipeId?: number) => {
+    if (recipeId === undefined) return;
     setSelectedRecipeIds(prev => 
       prev.includes(recipeId) 
         ? prev.filter(id => id !== recipeId)
@@ -343,14 +364,25 @@ export const UserProfile: React.FC = () => {
     
   const locationInfo = [profile.city, profile.country].filter(Boolean).join(', ');
   const fallbackImage = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=800&q=80';
-  const avatarUrl = profile.avatar ? profile.avatar : 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=400&q=80';
+  const avatarUrl = profile.avatar
+    ? profile.avatar.startsWith('http')
+      ? profile.avatar
+      : `http://127.0.0.1:8000${profile.avatar.startsWith('/') ? '' : '/'}${profile.avatar}`
+    : defaultAvatar;
 
   return (
     <div className="profile-page">
       <header className="profile-header">
         <div className="profile-main-info">
           <div className="avatar-container">
-            <img src={avatarUrl} alt={displayName} className="profile-avatar" />
+            <img
+              src={avatarUrl}
+              alt={displayName}
+              className="profile-avatar"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = defaultAvatar;
+              }}
+            />
             <span className="verified-badge">
               <Check size={12} strokeWidth={3} />
             </span>
@@ -386,7 +418,7 @@ export const UserProfile: React.FC = () => {
 
         <div className="profile-stats-grid">
           <div className="stat-card">
-            <span className="stat-label">COOKED</span>
+            <span className="stat-label">RECIPES</span>
             <div className="stat-value-row">
               <span className="stat-number">{profile.recipes_count}</span>
               <ChefHat size={22} className="stat-icon-green" />
@@ -397,7 +429,15 @@ export const UserProfile: React.FC = () => {
             <span className="stat-label">SAVED</span>
             <div className="stat-value-row">
               <span className="stat-number">{profile.saved_count || favoriteRecipes.length}</span>
-              <Bookmark size={20} className="stat-icon-green" />
+              <Heart size={20} className="stat-icon-green" />
+            </div>
+          </div>
+
+          <div className="stat-card">
+            <span className="stat-label">COOKED</span>
+            <div className="stat-value-row">
+              <span className="stat-number">{cookedCount}</span>
+              <Flame size={20} className="stat-icon-green" />
             </div>
           </div>
         </div>
@@ -767,7 +807,7 @@ export const UserProfile: React.FC = () => {
             ) : (
               <div className="recent-saves-grid" style={{ maxHeight: '50vh', overflowY: 'auto', paddingRight: '10px' }}>
                 {favoriteRecipes.map(recipe => {
-                  const isSelected = selectedRecipeIds.includes(recipe.id);
+                  const isSelected = recipe.id !== undefined && selectedRecipeIds.includes(recipe.id);
                   return (
                     <div 
                       key={recipe.id} 

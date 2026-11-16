@@ -1,7 +1,9 @@
 .profile-page {
+  width: 100%;
   max-width: 1200px;
   margin: 0 auto;
   padding: 2rem 1.5rem 4rem;
+  box-sizing: border-box;
   color: #ffffff;
   background-color: #0b0f0c;
   font-family: system-ui, -apple-system, sans-serif;
@@ -12,6 +14,7 @@
   justify-content: space-between;
   align-items: flex-start;
   gap: 2rem;
+  width: 100%;
   margin-bottom: 2.5rem;
 }
 
@@ -19,6 +22,7 @@
   display: flex;
   gap: 1.5rem;
   align-items: flex-start;
+  flex: 1;
 }
 
 .avatar-container {
@@ -82,7 +86,7 @@
 .profile-bio {
   color: #d1d5db;
   font-size: 0.95rem;
-  max-width: 500px;
+  max-width: 650px;
   line-height: 1.4;
   margin: 0 0 1.25rem 0;
 }
@@ -106,12 +110,13 @@
   cursor: pointer;
   transition: opacity 0.2s;
 }
-.btn-edit-profile:hover{
-    background-color: rgba(19, 236, 19, 0.9);
-    transform: translateY(-0.25rem);
-    transition-property: all;
-    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-    transition-duration: 150ms
+
+.btn-edit-profile:hover {
+  background-color: rgba(19, 236, 19, 0.9);
+  transform: translateY(-0.25rem);
+  transition-property: all;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
 }
 
 .btn-icon-action {
@@ -130,6 +135,7 @@
 .profile-stats-grid {
   display: flex;
   gap: 1rem;
+  flex-shrink: 0;
 }
 
 .stat-card {
@@ -178,7 +184,6 @@
   filter: drop-shadow(0 0 6px rgba(19, 236, 19, 0.35));
 }
 
-
 .stat-cuisine-text {
   font-size: 1.1rem;
   font-weight: 700;
@@ -188,6 +193,7 @@
 .profile-tabs-nav {
   display: flex;
   gap: 1.5rem;
+  width: 100%;
   border-bottom: 1px solid #1c271e;
   margin-bottom: 2.5rem;
 }
@@ -228,6 +234,7 @@
 }
 
 .profile-section {
+  width: 100%;
   margin-bottom: 3rem;
 }
 
@@ -269,8 +276,9 @@
 
 .collections-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1.25rem;
+  width: 100%;
 }
 
 .collection-card {
@@ -369,6 +377,7 @@
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
   gap: 1.25rem;
+  width: 100%;
 }
 
 .save-recipe-card {
@@ -479,16 +488,11 @@
   margin-bottom: 8px;
   font-size: 0.75rem;
   font-weight: 700;
-  color: #9ca3af;
+  color: #ffffff;
 }
 
 .rating-row .star {
   color: rgb(19 236 19);
-}
-
-.rating-row{
-  font-weight: 700;
-  color: #ffffff;
 }
 
 .rating-val {
@@ -557,11 +561,11 @@
   cursor: pointer;
 }
 
-.btn-add-mini:hover{
+.btn-add-mini:hover {
   transform: translateY(-0.25rem);
   transition-property: all;
   transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms
+  transition-duration: 150ms;
 }
 
 .discover-more-card {
@@ -577,9 +581,8 @@
   transition: border-color 0.2s;
 }
 
-.discover-more-card:hover{
-border-color: rgb(19 236 19);;
-
+.discover-more-card:hover {
+  border-color: rgb(19 236 19);
 }
 
 .compass-circle {
@@ -605,6 +608,7 @@ border-color: rgb(19 236 19);;
   font-size: 0.8rem;
   margin: 0;
 }
+
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -626,7 +630,7 @@ border-color: rgb(19 236 19);;
   width: 100%;
   max-width: 500px;
   border: 1px solid #2c332f;
-  box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
 .modal-content h2 {

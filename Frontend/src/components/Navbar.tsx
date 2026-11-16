@@ -3,6 +3,7 @@ import { NavLink, Link, useLocation, useNavigate } from 'react-router-dom';
 import { Search, Plus, LogIn, LogOut } from 'lucide-react';
 import logoImg from '../assets/logo.svg';
 import logotypImg from '../assets/logotyp.svg';
+import defaultAvatar from '../assets/default_avatar.jpg';
 
 export const Navbar: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -16,7 +17,6 @@ export const Navbar: React.FC = () => {
     setIsAuthenticated(isAuth);
 
     if (isAuth) {
-      // Pobieramy prawdziwy awatar zalogowanego użytkownika z backendu
       fetch('/api/users/profile/', {
         method: 'GET',
         headers: {
@@ -46,13 +46,17 @@ export const Navbar: React.FC = () => {
   const handleLogout = () => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('refresh_token');
+    localStorage.removeItem('username');
     setIsAuthenticated(false);
     setUserAvatar(null);
     navigate('/');
   };
 
-  const defaultAvatar = 'https://images.unsplash.com/photo-1583394838336-acd977736f90?auto=format&fit=crop&w=150&q=80';
-  const avatarUrl = userAvatar ? userAvatar : defaultAvatar;
+  const avatarUrl = userAvatar
+    ? userAvatar.startsWith('http')
+      ? userAvatar
+      : `http://127.0.0.1:8000${userAvatar.startsWith('/') ? '' : '/'}${userAvatar}`
+    : defaultAvatar;
 
   return (
     <header className="navbar-container">
@@ -89,10 +93,13 @@ export const Navbar: React.FC = () => {
           {isAuthenticated ? (
             <div className="navbar-user-section">
               <Link to="/profile" className="avatar-link" title="My Profile">
-                <img 
-                  src={avatarUrl} 
-                  alt="Avatar" 
-                  className="user-avatar-circle" 
+                <img
+                  src={avatarUrl}
+                  alt="Avatar"
+                  className="user-avatar-circle"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = defaultAvatar;
+                  }}
                 />
               </Link>
               <button onClick={handleLogout} className="btn-login-nav logout-btn" title="Log Out">

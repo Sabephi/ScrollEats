@@ -49,7 +49,7 @@
   color: white;
 }
 
-/* Postęp / Progress Bar */
+
 .cooking-progress-container {
   display: flex;
   flex-direction: column;
@@ -102,7 +102,6 @@
   background-color: #10b981;
 }
 
-/* Główna zawartość */
 .cooking-main-body {
   display: grid;
   grid-template-columns: 1fr 350px;
@@ -123,7 +122,6 @@
   line-height: 1.6;
 }
 
-/* Składniki z ograniczeniem na 5 elementów i scrollem */
 .cooking-ingredients-box {
   background-color: #111512;
   border: 1px solid rgba(255, 255, 255, 0.05);
@@ -156,12 +154,11 @@
   display: flex;
   flex-direction: column;
   gap: 10px;
-  max-height: 270px; /* Wysokość na ok. 5 składników */
+  max-height: 270px;
   overflow-y: auto;
   padding-right: 5px;
 }
 
-/* Stylizacja paska przewijania (scrollbara) */
 .ingredients-list::-webkit-scrollbar {
   width: 6px;
 }
@@ -186,7 +183,7 @@
   border-radius: 10px;
   cursor: pointer;
   transition: background-color 0.2s;
-  flex-shrink: 0; /* Zabezpiecza przed zgnieceniem przez flex */
+  flex-shrink: 0;
 }
 
 .ingredient-item:hover {
@@ -225,7 +222,6 @@
   font-size: 0.9rem;
 }
 
-/* Footer / Kontrolki */
 .cooking-footer {
   display: flex;
   justify-content: space-between;
@@ -274,7 +270,6 @@
   box-shadow: 0 0 20px rgba(16, 185, 129, 0.6);
 }
 
-/* Stoper */
 .cooking-timer {
   display: flex;
   align-items: center;
@@ -295,7 +290,6 @@
   letter-spacing: 0.05em;
 }
 
-/* Interaktywny czas stopera */
 .timer-clickable-text {
   color: #10b981;
   font-size: 1.1rem;

@@ -1,0 +1,146 @@
+.filters-sidebar {
+  width: 280px;
+  background: #141916;
+  border: 1px solid #2d3732;
+  border-radius: 16px;
+  padding: 20px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  align-self: flex-start;
+}
+
+.filters-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 1px solid #2d3732;
+  padding-bottom: 12px;
+}
+
+.filters-header h3 {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.btn-reset {
+  background: none;
+  border: none;
+  color: #8e9b94;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.btn-reset:hover {
+  color: #10b981;
+}
+
+.filter-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filter-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.filter-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8e9b94;
+  letter-spacing: 0.5px;
+}
+
+.filter-range-val {
+  font-size: 10px;
+  color: #6b7280;
+}
+
+.filter-chips-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.filters-sidebar .tag-chip {
+  background: #1c211f;
+  border: 1px solid #2d3732;
+  color: #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filters-sidebar .tag-chip.active {
+  background: #10b981;
+  color: #000;
+  border-color: #10b981;
+  font-weight: 500;
+}
+
+.range-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: #9ca3af;
+}
+
+.range-group input[type="range"] {
+  width: 100%;
+  accent-color: #10b981;
+  cursor: pointer;
+}
+
+.btn-apply-filters {
+  background: #10b981;
+  color: #000;
+  border: none;
+  border-radius: 12px;
+  padding: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  margin-top: 10px;
+  transition: opacity 0.2s;
+}
+
+.btn-apply-filters:hover {
+  opacity: 0.9;
+}
+
+.double-range-inputs {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 20px;
+}
+
+.double-range-inputs input[type="range"] {
+  position: absolute;
+  width: 100%;
+  background: none;
+  pointer-events: none;
+  appearance: none;
+  accent-color: #10b981;
+}
+
+.double-range-inputs input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto;
+  cursor: pointer;
+}
+.double-range-inputs input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  cursor: pointer;
+}

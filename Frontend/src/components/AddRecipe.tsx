@@ -18,6 +18,7 @@ export const AddRecipe: React.FC = () => {
     title: '',
     description: '',
     prep_time: 0,
+    servings: 4, 
     difficulty: 'beginner',
     calories: 0,
     protein: 0,
@@ -25,17 +26,19 @@ export const AddRecipe: React.FC = () => {
     fat: 0,
   });
 
-  const [ingredients, setIngredients] = useState<RecipeIngredient[]>([
-    { ingredient_name: '', amount: 1, unit: 'szt' },
-    { ingredient_name: '', amount: 1, unit: 'szt' },
+  const [ingredients, setIngredients] = useState<any[]>([
+    { ingredient_name: '', amount: '', unit: '' },
+    { ingredient_name: '', amount: '', unit: '' },
   ]);
-
 
   const [instructions, setInstructions] = useState<{ text: string; image: string; file?: File; preview?: string }>([
     { text: '', image: '' },
   ]);
 
+  const [mealTypes, setMealTypes] = useState<string[]>([]);
+  const [cuisines, setCuisines] = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
+  const [allergens, setAllergens] = useState<string[]>([]);
 
   useEffect(() => {
     const token = localStorage.getItem('access_token');
@@ -79,18 +82,21 @@ export const AddRecipe: React.FC = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const incrementServings = () => setFormData(prev => ({ ...prev, servings: prev.servings + 1 }));
+  const decrementServings = () => setFormData(prev => ({ ...prev, servings: Math.max(1, prev.servings - 1) }));
+
   const handleIngredientChange = (
     index: number,
-    field: keyof RecipeIngredient,
+    field: string,
     value: any
   ) => {
     const updated = [...ingredients];
-    updated[index] = { ...updated[index], [field]: value } as RecipeIngredient;
+    updated[index] = { ...updated[index], [field]: value };
     setIngredients(updated);
   };
 
   const addIngredient = () => {
-    setIngredients([...ingredients, { ingredient_name: '', amount: 1, unit: 'szt' }]);
+    setIngredients([...ingredients, { ingredient_name: '', amount: '', unit: '' }]);
   };
 
   const removeIngredient = (index: number) => {
@@ -111,10 +117,8 @@ export const AddRecipe: React.FC = () => {
     setInstructions(instructions.filter((_, i) => i !== index));
   };
 
-  const toggleCategory = (cat: string) => {
-    setCategories((prev) =>
-      prev.includes(cat) ? prev.filter((c) => c !== cat) : [...prev, cat]
-    );
+  const toggleSelection = (item: string, state: string[], setState: React.Dispatch<React.SetStateAction<string[]>>) => {
+    setState((prev) => prev.includes(item) ? prev.filter((i) => i !== item) : [...prev, item]);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,19 +140,24 @@ export const AddRecipe: React.FC = () => {
       .map((ing) => ({
         name: ing.ingredient_name,
         ingredient_name: ing.ingredient_name,
-        amount: ing.amount,
+        amount: parseFloat(String(ing.amount).replace(',', '.')) || 0,
         unit: ing.unit,
       }));
 
     const payload = {
       ...formData,
       prep_time: Number(formData.prep_time),
+      servings: Number(formData.servings),
       calories: Number(formData.calories),
       protein: Number(formData.protein),
       carbs: Number(formData.carbs),
       fat: Number(formData.fat),
       ingredients: formattedIngredients,
       instructions: formattedInstructions,
+      meal_types: mealTypes,
+      cuisines: cuisines,
+      categories: categories,
+      allergens: allergens
     };
 
     try {
@@ -166,7 +175,7 @@ export const AddRecipe: React.FC = () => {
     <div className="create-recipe-page">
       <header className="page-header">
         <h1>Create New Recipe</h1>
-        <p>Share your culinary masterpiece with the ScrollEats community.</p>
+        <p>Share your culinary masterpiece with the Emerald community.</p>
       </header>
 
       {error && <div className="error-banner">{error}</div>}
@@ -229,7 +238,7 @@ export const AddRecipe: React.FC = () => {
               />
             </div>
 
-            <div className="form-row-2">
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
               <div className="form-group">
                 <label>PREP TIME (MIN)</label>
                 <div className="input-with-icon">
@@ -242,6 +251,33 @@ export const AddRecipe: React.FC = () => {
                     min={1}
                     required
                   />
+                </div>
+              </div>
+
+              {/* Zaktualizowany kontener SERVINGS - dziedziczy style natywnego inputa */}
+              <div className="form-group">
+                <label>SERVINGS</label>
+                <div className="input-with-icon" style={{ position: 'relative' }}>
+                  <button 
+                    type="button" 
+                    onClick={decrementServings} 
+                    style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#10b981', fontSize: '20px', cursor: 'pointer', zIndex: 2, padding: 0 }}
+                  >
+                    -
+                  </button>
+                  <input
+                    type="text"
+                    value={formData.servings}
+                    readOnly
+                    style={{ textAlign: 'center', width: '100%', cursor: 'default' }}
+                  />
+                  <button 
+                    type="button" 
+                    onClick={incrementServings} 
+                    style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', color: '#10b981', fontSize: '20px', cursor: 'pointer', zIndex: 2, padding: 0 }}
+                  >
+                    +
+                  </button>
                 </div>
               </div>
 
@@ -401,7 +437,7 @@ export const AddRecipe: React.FC = () => {
 
             <div className="ingredients-inputs-list">
               {ingredients.map((ing, idx) => (
-                <div key={idx} className="ingredient-input-row" style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                <div key={idx} className="ingredient-input-row" style={{ display: 'flex', gap: '8px', marginBottom: '8px', alignItems: 'center' }}>
                   <input
                     type="text"
                     className="ing-name"
@@ -410,28 +446,28 @@ export const AddRecipe: React.FC = () => {
                     onChange={(e) => handleIngredientChange(idx, 'ingredient_name', e.target.value)}
                     style={{ flex: 1 }}
                   />
+                  {/* Używamy tej samej klasy "ing-name" co główny input, by zachować spójność obramowania i tła z pliku CSS */}
                   <input
-                    type="number"
-                    className="ing-amount"
-                    placeholder="Qty"
+                    type="text"
+                    className="ing-name"
+                    placeholder="e.g. 1"
                     value={ing.amount}
-                    min={0}
-                    step="0.1"
-                    onChange={(e) => handleIngredientChange(idx, 'amount', parseFloat(e.target.value) || 0)}
-                    style={{ width: '70px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #37413b', background: '#1c211f', color: '#fff' }}
+                    onChange={(e) => handleIngredientChange(idx, 'amount', e.target.value)}
+                    style={{ width: '80px', textAlign: 'center' }}
                   />
                   <input
                     type="text"
-                    className="ing-unit"
-                    placeholder="Unit"
+                    className="ing-name"
+                    placeholder="e.g. szt"
                     value={ing.unit}
                     onChange={(e) => handleIngredientChange(idx, 'unit', e.target.value)}
-                    style={{ width: '90px', padding: '0.75rem', borderRadius: '8px', border: '1px solid #37413b', background: '#1c211f', color: '#fff' }}
+                    style={{ width: '80px', textAlign: 'center' }}
                   />
                   <button
                     type="button"
                     className="btn-remove-ing"
                     onClick={() => removeIngredient(idx)}
+                    style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: '0' }}
                   >
                     <X size={16} />
                   </button>
@@ -441,15 +477,52 @@ export const AddRecipe: React.FC = () => {
           </div>
 
           <div className="card categories-card">
+            
             <div className="cat-section">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <label className="cat-section-title" style={{ margin: 0 }}>MEAL TYPE</label>
+              </div>
+              <div className="tags-container">
+                {['Breakfast', 'Lunch', 'Dinner', 'Snack', 'Dessert', 'Drink'].map((type) => (
+                  <button
+                    key={type}
+                    type="button"
+                    className={`tag-chip ${mealTypes.includes(type) ? 'active' : ''}`}
+                    onClick={() => toggleSelection(type, mealTypes, setMealTypes)}
+                  >
+                    {type}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="cat-section" style={{ marginTop: '20px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <label className="cat-section-title" style={{ margin: 0 }}>CUISINE</label>
+              </div>
+              <div className="tags-container">
+                {['Mediterranean', 'Italian', 'Mexican', 'American', 'French', 'Japanese', 'Chinese', 'Thai', 'Korean', 'Indian', 'Middle Eastern', 'Eastern European'].map((cuisine) => (
+                  <button
+                    key={cuisine}
+                    type="button"
+                    className={`tag-chip ${cuisines.includes(cuisine) ? 'active' : ''}`}
+                    onClick={() => toggleSelection(cuisine, cuisines, setCuisines)}
+                  >
+                    {cuisine}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="cat-section" style={{ marginTop: '20px' }}>
               <label className="cat-section-title">CATEGORIES</label>
               <div className="tags-container">
-                {['Athletes', 'Vegan', 'Desserts', 'Quick & Easy'].map((cat) => (
+                {['Athletes', 'Vegan', 'Quick & Easy'].map((cat) => (
                   <button
                     key={cat}
                     type="button"
                     className={`tag-chip ${categories.includes(cat) ? 'active' : ''}`}
-                    onClick={() => toggleCategory(cat)}
+                    onClick={() => toggleSelection(cat, categories, setCategories)}
                   >
                     {cat}
                   </button>
@@ -457,12 +530,17 @@ export const AddRecipe: React.FC = () => {
               </div>
             </div>
 
-            <div className="cat-section">
+            <div className="cat-section" style={{ marginTop: '20px' }}>
               <label className="cat-section-title">ALLERGENS</label>
               <div className="allergens-grid">
                 {['Gluten-free', 'Dairy-free', 'Nut-free', 'Soy-free'].map((allergen) => (
                   <label key={allergen} className="custom-checkbox-label">
-                    <input type="checkbox" className="custom-checkbox-input" />
+                    <input 
+                      type="checkbox" 
+                      className="custom-checkbox-input" 
+                      checked={allergens.includes(allergen)}
+                      onChange={() => toggleSelection(allergen, allergens, setAllergens)}
+                    />
                     <span className="custom-checkbox-circle"></span>
                     <span className="checkbox-text">{allergen}</span>
                   </label>

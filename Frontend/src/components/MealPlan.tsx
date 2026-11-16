@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Edit3, Flame, X, ChevronLeft, ChevronRight, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, Edit3, Flame, X, ChevronLeft, ChevronRight, Calendar as CalendarIcon, Copy, ClipboardPaste, Check } from 'lucide-react';
 import { fetchFavorites, type Recipe } from '../api';
 import './MealPlan.css';
 
@@ -23,6 +23,11 @@ interface MacrosGoal {
   protein: number;
   carbs: number;
   fats: number;
+}
+
+interface CopiedWeekData {
+  label: string;
+  daysMeals: MealSlot[][];
 }
 
 const DEFAULT_GOALS: MacrosGoal = { calories: 2200, protein: 180, carbs: 250, fats: 70 };
@@ -79,6 +84,9 @@ export const MealPlan: React.FC = () => {
   const [nameModalInfo, setNameModalInfo] = useState<{ dayIdx: number, mealIdx: number, currentName: string } | null>(null);
   const [newMealName, setNewMealName] = useState("");
 
+  const [copiedWeek, setCopiedWeek] = useState<CopiedWeekData | null>(null);
+  const [isCopiedFeedback, setIsCopiedFeedback] = useState(false);
+
   useEffect(() => {
     const days = getWeekDays(currentWeekBaseDate);
     const mondayKey = days[0].id;
@@ -128,16 +136,6 @@ export const MealPlan: React.FC = () => {
     loadFavorites();
   }, [isLoggedIn]);
 
-  if (!isLoggedIn) {
-    return (
-      <div className="planner-page planner-blocked">
-        <h2>Dostęp zablokowany</h2>
-        <p>Musisz być zalogowany, aby tworzyć swój własny plan posiłków.</p>
-        <button className="btn-login-prompt" onClick={() => navigate('/auth')}>Zaloguj się</button>
-      </div>
-    );
-  }
-
   const today = new Date();
   
   const minDate = new Date();
@@ -184,6 +182,28 @@ export const MealPlan: React.FC = () => {
   const startDateStr = weekPlan[0].dateStr;
   const endDateStr = weekPlan[6].dateStr;
   const yearStr = weekPlan[0].fullDate.getFullYear();
+
+  const handleCopyWeek = () => {
+    const clonedMeals = weekPlan.map(day => JSON.parse(JSON.stringify(day.meals)));
+    setCopiedWeek({
+      label: `${startDateStr} - ${endDateStr}`,
+      daysMeals: clonedMeals
+    });
+    setIsCopiedFeedback(true);
+    setTimeout(() => setIsCopiedFeedback(false), 2000);
+  };
+
+  const handlePasteWeek = () => {
+    if (!copiedWeek) return;
+
+    const updatedPlan = weekPlan.map((day, idx) => ({
+      ...day,
+      meals: JSON.parse(JSON.stringify(copiedWeek.daysMeals[idx] || day.meals))
+    }));
+
+    setWeekPlan(updatedPlan);
+    setCopiedWeek(null);
+  };
 
   const activeDay = weekPlan[activeDayIndex] || weekPlan[0];
   const dayMacros = activeDay.meals.reduce((acc, meal) => {
@@ -240,130 +260,218 @@ export const MealPlan: React.FC = () => {
   };
 
   return (
-    <div className="planner-page">
-      <header className="planner-header">
-        <div className="planner-title-section">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '8px', flexWrap: 'wrap' }}>
-            <h1>Weekly Plan</h1>
-            <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px' }}>
-              <button 
-                onClick={handlePrevWeek} 
-                disabled={!canGoPrev} 
-                title="Poprzedni tydzień (maks. 1 miesiąc)" 
-                style={{ background: 'transparent', border: 'none', color: canGoPrev ? 'white' : '#4b5563', cursor: canGoPrev ? 'pointer' : 'not-allowed', padding: '4px 8px', display: 'flex', alignItems: 'center' }}
-              >
-                <ChevronLeft size={16} /> Tydzień w tył
-              </button>
-              
-              <button onClick={handleResetToCurrentWeek} title="Dzisiaj / Aktualny tydzień" style={{ background: 'rgba(16,185,129,0.2)', border: 'none', color: '#10b981', cursor: 'pointer', padding: '4px 10px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                Aktualny tydzień
-              </button>
-              
-              <button 
-                onClick={handleNextWeek} 
-                disabled={!canGoNext} 
-                title="Następny tydzień (maks. 1 miesiąc)" 
-                style={{ background: 'transparent', border: 'none', color: canGoNext ? 'white' : '#4b5563', cursor: canGoNext ? 'pointer' : 'not-allowed', padding: '4px 8px', display: 'flex', alignItems: 'center' }}
-              >
-                Tydzień w przód <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-          
-          <div className="planner-dates">
-            <CalendarIcon size={14} style={{ marginRight: '4px' }} />
-            {startDateStr} - {endDateStr}, {yearStr} <span className="badge-active-week">ACTIVE WEEK</span>
-            <button className="btn-set-goals" onClick={() => { setEditGoalForm(goals); setIsGoalsModalOpen(true); }}>
-              Ustaw Cele
-            </button>
-          </div>
-        </div>
-
-        <div className="planner-goals-section">
-          <div className="goal-track">
-            <div className="goal-header">
-              <span className="label">Calories</span>
-              <span className="values">{dayMacros.calories}<span>/{goals.calories}</span></span>
-            </div>
-            <div className="bar-bg"><div className="bar-fill fill-cals" style={{ width: `${getPct(dayMacros.calories, goals.calories)}%` }}></div></div>
-          </div>
-          <div className="goal-track">
-            <div className="goal-header">
-              <span className="label">Protein</span>
-              <span className="values">{dayMacros.protein}g<span>/{goals.protein}g</span></span>
-            </div>
-            <div className="bar-bg"><div className="bar-fill fill-prot" style={{ width: `${getPct(dayMacros.protein, goals.protein)}%` }}></div></div>
-          </div>
-          <div className="goal-track">
-            <div className="goal-header">
-              <span className="label">Carbs</span>
-              <span className="values">{dayMacros.carbs}g<span>/{goals.carbs}g</span></span>
-            </div>
-            <div className="bar-bg"><div className="bar-fill fill-carbs" style={{ width: `${getPct(dayMacros.carbs, goals.carbs)}%` }}></div></div>
-          </div>
-          <div className="goal-track">
-            <div className="goal-header">
-              <span className="label">Fats</span>
-              <span className="values">{dayMacros.fats}g<span>/{goals.fats}g</span></span>
-            </div>
-            <div className="bar-bg"><div className="bar-fill fill-fats" style={{ width: `${getPct(dayMacros.fats, goals.fats)}%` }}></div></div>
-          </div>
-        </div>
-      </header>
-
-      <div className="planner-grid">
-        {weekPlan.map((day, dIdx) => (
-          <div key={day.id} className={`day-column ${dIdx === activeDayIndex ? 'active' : ''}`}>
-            
-            <div className="day-header" onClick={() => setActiveDayIndex(dIdx)}>
-              <h3>{day.dayName}</h3>
-              <p>{day.dateStr}</p>
-            </div>
-
-            {day.meals.map((meal, mIdx) => (
-              <div key={meal.id} className="meal-slot-container">
-                <div className="meal-slot-header">
-                  <span className="meal-name">{meal.name}</span>
-                  <button 
-                    className="btn-edit-meal"
-                    onClick={() => {
-                      setNewMealName(meal.name);
-                      setNameModalInfo({ dayIdx: dIdx, mealIdx: mIdx, currentName: meal.name });
-                    }}
-                  >
-                    <Edit3 size={12} />
-                  </button>
-                </div>
-
-                {meal.recipe ? (
-                  <div className="meal-card filled" onClick={() => setRecipeModalInfo({ dayIdx: dIdx, mealIdx: mIdx })}>
-                    <button className="btn-remove-meal" onClick={(e) => handleRemoveRecipe(e, dIdx, mIdx)}>
-                      <X size={14} />
-                    </button>
-                    <div className="filled-image-wrapper">
-                      <img src={meal.recipe.get_image || meal.recipe.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80'} alt="Recipe" />
-                    </div>
-                    <div className="filled-info">
-                      <p className="filled-title">{meal.recipe.title}</p>
-                      <span className="filled-cals"><Flame size={12} /> {meal.recipe.calories || 0} kcal</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="meal-card empty" onClick={() => setRecipeModalInfo({ dayIdx: dIdx, mealIdx: mIdx })}>
-                    <div className="empty-icon-circle"><Plus size={16} /></div>
-                    <p className="empty-text">PLAN {meal.name.toUpperCase()}</p>
-                    <p className="empty-subtext">Add recipe</p>
-                  </div>
-                )}
+    <div className="planner-page" style={{ position: 'relative', overflow: 'hidden' }}>
+      
+      <div style={{
+        filter: isLoggedIn ? 'none' : 'blur(4px)',
+        pointerEvents: isLoggedIn ? 'auto' : 'none',
+        transition: 'filter 0.3s ease, opacity 0.3s ease',
+        width: '100%'
+      }}>
+        <header className="planner-header">
+          <div className="planner-title-section">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px', marginBottom: '8px', flexWrap: 'wrap' }}>
+              <h1>Weekly Plan</h1>
+              <div style={{ display: 'flex', alignItems: 'center', background: 'rgba(255,255,255,0.05)', borderRadius: '8px', padding: '4px' }}>
+                <button 
+                  onClick={handlePrevWeek} 
+                  disabled={!canGoPrev} 
+                  title="Poprzedni tydzień (maks. 1 miesiąc)" 
+                  style={{ background: 'transparent', border: 'none', color: canGoPrev ? 'white' : '#4b5563', cursor: canGoPrev ? 'pointer' : 'not-allowed', padding: '4px 8px', display: 'flex', alignItems: 'center' }}
+                >
+                  <ChevronLeft size={16} /> Tydzień w tył
+                </button>
+                
+                <button onClick={handleResetToCurrentWeek} title="Dzisiaj / Aktualny tydzień" style={{ background: 'rgba(16,185,129,0.2)', border: 'none', color: '#10b981', cursor: 'pointer', padding: '4px 10px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
+                  Aktualny tydzień
+                </button>
+                
+                <button 
+                  onClick={handleNextWeek} 
+                  disabled={!canGoNext} 
+                  title="Następny tydzień (maks. 1 miesiąc)" 
+                  style={{ background: 'transparent', border: 'none', color: canGoNext ? 'white' : '#4b5563', cursor: canGoNext ? 'pointer' : 'not-allowed', padding: '4px 8px', display: 'flex', alignItems: 'center' }}
+                >
+                  Tydzień w przód <ChevronRight size={16} />
+                </button>
               </div>
-            ))}
+            </div>
+            
+            <div className="planner-dates" style={{ flexWrap: 'wrap', gap: '8px' }}>
+              <CalendarIcon size={14} style={{ marginRight: '4px' }} />
+              {startDateStr} - {endDateStr}, {yearStr} <span className="badge-active-week">ACTIVE WEEK</span>
+              <button className="btn-set-goals" onClick={() => { setEditGoalForm(goals); setIsGoalsModalOpen(true); }}>
+                Ustaw Cele
+              </button>
 
-            <button className="btn-add-meal-row" onClick={() => handleAddMealRow(dIdx)}>
-              <Plus size={14} /> Add Meal
+              <button 
+                className="btn-set-goals" 
+                onClick={handleCopyWeek}
+                title="Skopiuj posiłki z całego tego tygodnia"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}
+              >
+                {isCopiedFeedback ? <Check size={14} color="#10b981" /> : <Copy size={14} />}
+                {isCopiedFeedback ? 'Skopiowano!' : 'Kopiuj tydzień'}
+              </button>
+
+              {copiedWeek && (
+                <button 
+                  className="btn-set-goals" 
+                  onClick={handlePasteWeek}
+                  title={`Wklej plan z tygodnia: ${copiedWeek.label}`}
+                  style={{ 
+                    display: 'inline-flex', 
+                    alignItems: 'center', 
+                    gap: '6px',
+                    borderColor: '#10b981',
+                    color: '#10b981'
+                  }}
+                >
+                  <ClipboardPaste size={14} />
+                  {`Wklej tydzień (${copiedWeek.label})`}
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="planner-goals-section">
+            <div className="goal-track">
+              <div className="goal-header">
+                <span className="label">Calories</span>
+                <span className="values">{dayMacros.calories}<span>/{goals.calories}</span></span>
+              </div>
+              <div className="bar-bg"><div className="bar-fill fill-cals" style={{ width: `${getPct(dayMacros.calories, goals.calories)}%` }}></div></div>
+            </div>
+            <div className="goal-track">
+              <div className="goal-header">
+                <span className="label">Protein</span>
+                <span className="values">{dayMacros.protein}g<span>/{goals.protein}g</span></span>
+              </div>
+              <div className="bar-bg"><div className="bar-fill fill-prot" style={{ width: `${getPct(dayMacros.protein, goals.protein)}%` }}></div></div>
+            </div>
+            <div className="goal-track">
+              <div className="goal-header">
+                <span className="label">Carbs</span>
+                <span className="values">{dayMacros.carbs}g<span>/{goals.carbs}g</span></span>
+              </div>
+              <div className="bar-bg"><div className="bar-fill fill-carbs" style={{ width: `${getPct(dayMacros.carbs, goals.carbs)}%` }}></div></div>
+            </div>
+            <div className="goal-track">
+              <div className="goal-header">
+                <span className="label">Fats</span>
+                <span className="values">{dayMacros.fats}g<span>/{goals.fats}g</span></span>
+              </div>
+              <div className="bar-bg"><div className="bar-fill fill-fats" style={{ width: `${getPct(dayMacros.fats, goals.fats)}%` }}></div></div>
+            </div>
+          </div>
+        </header>
+
+        <div className="planner-grid">
+          {weekPlan.map((day, dIdx) => (
+            <div key={day.id} className={`day-column ${dIdx === activeDayIndex ? 'active' : ''}`}>
+              
+              <div className="day-header" onClick={() => setActiveDayIndex(dIdx)}>
+                <h3>{day.dayName}</h3>
+                <p>{day.dateStr}</p>
+              </div>
+
+              {day.meals.map((meal, mIdx) => (
+                <div key={meal.id} className="meal-slot-container">
+                  <div className="meal-slot-header">
+                    <span className="meal-name">{meal.name}</span>
+                    <button 
+                      className="btn-edit-meal"
+                      onClick={() => {
+                        setNewMealName(meal.name);
+                        setNameModalInfo({ dayIdx: dIdx, mealIdx: mIdx, currentName: meal.name });
+                      }}
+                    >
+                      <Edit3 size={12} />
+                    </button>
+                  </div>
+
+                  {meal.recipe ? (
+                    <div className="meal-card filled" onClick={() => setRecipeModalInfo({ dayIdx: dIdx, mealIdx: mIdx })}>
+                      <button className="btn-remove-meal" onClick={(e) => handleRemoveRecipe(e, dIdx, mIdx)}>
+                        <X size={14} />
+                      </button>
+                      <div className="filled-image-wrapper">
+                        <img src={meal.recipe.get_image || meal.recipe.image_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=400&q=80'} alt="Recipe" />
+                      </div>
+                      <div className="filled-info">
+                        <p className="filled-title">{meal.recipe.title}</p>
+                        <span className="filled-cals"><Flame size={12} /> {meal.recipe.calories || 0} kcal</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="meal-card empty" onClick={() => setRecipeModalInfo({ dayIdx: dIdx, mealIdx: mIdx })}>
+                      <div className="empty-icon-circle"><Plus size={16} /></div>
+                      <p className="empty-text">PLAN {meal.name.toUpperCase()}</p>
+                      <p className="empty-subtext">Add recipe</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              <button className="btn-add-meal-row" onClick={() => handleAddMealRow(dIdx)}>
+                <Plus size={14} /> Add Meal
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {!isLoggedIn && (
+        <div style={{
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10,
+          background: 'rgba(14, 18, 16, 0.5)',
+          backdropFilter: 'blur(2px)'
+        }}>
+          <div style={{
+            background: '#141916',
+            border: '1px solid #2d3732',
+            padding: '36px 48px',
+            borderRadius: '16px',
+            textAlign: 'center',
+            boxShadow: '0 15px 35px rgba(0,0,0,0.6)',
+            maxWidth: '450px',
+            width: '90%'
+          }}>
+            <h2 style={{ color: '#fff', fontSize: '24px', marginBottom: '12px', fontWeight: 600 }}>
+              Dostęp zablokowany
+            </h2>
+            <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '24px', lineHeight: '1.6' }}>
+              Musisz być zalogowany, aby tworzyć i przeglądać swój własny plan posiłków.
+            </p>
+            <button 
+              className="btn-login-prompt" 
+              onClick={() => navigate('/auth')}
+              style={{
+                background: '#10b981',
+                color: '#000',
+                border: 'none',
+                borderRadius: '10px',
+                padding: '12px 28px',
+                fontWeight: '600',
+                fontSize: '14px',
+                cursor: 'pointer',
+                transition: 'opacity 0.2s'
+              }}
+            >
+              Zaloguj się
             </button>
           </div>
-        ))}
-      </div>
+        </div>
+      )}
 
       {isGoalsModalOpen && (
         <div className="modal-overlay">

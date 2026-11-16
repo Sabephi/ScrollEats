@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { X, Clock, Play, Pause, ArrowLeft, ArrowRight, Check, RotateCcw } from 'lucide-react';
 import './CookingModeModal.css';
 
@@ -16,6 +16,7 @@ export interface CookingIngredient {
 interface CookingModeModalProps {
   isOpen: boolean;
   onClose: () => void;
+  recipeId?: number;
   recipeTitle: string;
   steps: CookingStep[];
   ingredients: CookingIngredient[];
@@ -24,6 +25,7 @@ interface CookingModeModalProps {
 export const CookingModeModal: React.FC<CookingModeModalProps> = ({
   isOpen,
   onClose,
+  recipeId,
   recipeTitle,
   steps,
   ingredients
@@ -31,14 +33,48 @@ export const CookingModeModal: React.FC<CookingModeModalProps> = ({
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [checkedIngredients, setCheckedIngredients] = useState<Set<number | string>>(new Set());
   
-  const [timeLeft, setTimeLeft] = useState(300); // domyślnie 5 minut w sekundach
+  const [timeLeft, setTimeLeft] = useState(300);
   const [isTimerRunning, setIsTimerRunning] = useState(false);
-  
-  // Stany do edycji czasu
+
   const [isEditingTime, setIsEditingTime] = useState(false);
   const [editTimeValue, setEditTimeValue] = useState("");
 
-  // Obsługa stopera
+  const hasCountedRef = useRef(false);
+
+  useEffect(() => {
+    if (!isOpen) {
+      hasCountedRef.current = false;
+      setCurrentStepIndex(0);
+      setIsTimerRunning(false);
+      return;
+    }
+
+    if (steps.length > 0 && currentStepIndex === steps.length - 1 && !hasCountedRef.current) {
+      hasCountedRef.current = true;
+
+      const token = localStorage.getItem('access_token');
+      const username = localStorage.getItem('username');
+
+      if (token && username) {
+        const storageKey = `cooked_history_${username}`;
+        try {
+          const existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          const updated = [
+            {
+              id: recipeId ?? Date.now(),
+              title: recipeTitle,
+              cookedAt: new Date().toISOString(),
+            },
+            ...(Array.isArray(existing) ? existing : []),
+          ];
+          localStorage.setItem(storageKey, JSON.stringify(updated));
+        } catch (e) {
+          console.error('Błąd zapisu historii gotowania:', e);
+        }
+      }
+    }
+  }, [isOpen, currentStepIndex, steps.length, recipeId, recipeTitle]);
+
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isTimerRunning && timeLeft > 0) {
@@ -78,7 +114,7 @@ export const CookingModeModal: React.FC<CookingModeModalProps> = ({
 
   const resetTimer = () => {
     setIsTimerRunning(false);
-    setTimeLeft(0); // Zeruje stoper
+    setTimeLeft(0);
   };
 
   const formatTime = (seconds: number) => {
@@ -87,17 +123,14 @@ export const CookingModeModal: React.FC<CookingModeModalProps> = ({
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
   };
 
-  // Zatwierdzenie nowo wpisanego czasu
   const handleTimeSubmit = () => {
     let newSeconds = 0;
     const value = editTimeValue.trim();
-    
-    // Obsługa formatu "MM:SS" lub samych minut "MM"
+
     if (value.includes(':')) {
       const [m, s] = value.split(':');
       newSeconds = (parseInt(m) || 0) * 60 + (parseInt(s) || 0);
     } else {
-      // Zakładamy, że podano same minuty (np. wpisanie "5" da 5 minut)
       newSeconds = (parseInt(value) || 0) * 60;
     }
 
